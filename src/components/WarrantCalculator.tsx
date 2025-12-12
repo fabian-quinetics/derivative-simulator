@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import PayoffChart from './PayoffChart'
 import PathDependencyChart from './PathDependencyChart'
 import MonteCarloSimulator from './MonteCarloSimulator'
 import PayoffSurface from './PayoffSurface'
+import InfoModal from './InfoModal'
+import InfoIcon from './InfoIcon'
 import { fetchSummary } from '../api'
 
 type ProductType = 'warrant' | 'knockout' | 'factor'
@@ -26,12 +29,13 @@ interface WarrantParams {
 type BsGreeks = { delta: number; gamma: number; vega: number; theta: number }
 
 export default function WarrantCalculator() {
+  const { t } = useTranslation()
   const [params, setParams] = useState<WarrantParams>({
     productType: 'warrant',
     direction: 'call',
     currentPrice: 100,
     strikePrice: 100,
-    ratio: 0.1,
+    ratio: 1,
     knockoutBarrier: 90,
     factor: 3,
     adjustmentThreshold: 15,
@@ -51,15 +55,32 @@ export default function WarrantCalculator() {
   const summaryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [summary, setSummary] = useState<any>(null)
+  const [modalInfo, setModalInfo] = useState<{ title: string; content: string } | null>(null)
 
   const updateParam = <K extends keyof WarrantParams>(key: K, value: WarrantParams[K]) => {
-    setParams(prev => ({ ...prev, [key]: value }))
+    setParams(prev => {
+      const newParams = { ...prev, [key]: value }
+      if (key === 'productType' && value === 'knockout') {
+        if (prev.direction === 'call' && newParams.strikePrice >= newParams.currentPrice) {
+          newParams.strikePrice = Math.round(newParams.currentPrice * 0.9)
+        } else if (prev.direction === 'put' && newParams.strikePrice <= newParams.currentPrice) {
+          newParams.strikePrice = Math.round(newParams.currentPrice * 1.1)
+        }
+      }
+      return newParams
+    })
   }
+
+  const [summaryLoading, setSummaryLoading] = useState(true)
 
   useEffect(() => {
     if (summaryTimer.current) clearTimeout(summaryTimer.current)
+    setSummaryLoading(true)
     summaryTimer.current = setTimeout(() => {
-      fetchSummary(params).then(setSummary)
+      fetchSummary(params).then((s) => {
+        setSummary(s)
+        setSummaryLoading(false)
+      })
     }, 150)
     return () => {
       if (summaryTimer.current) clearTimeout(summaryTimer.current)
@@ -69,30 +90,62 @@ export default function WarrantCalculator() {
   const bsPrice = (summary?.bsPrice ?? 0) as number
   const bsGreeks = (summary?.bsGreeks ?? { delta: 0, gamma: 0, vega: 0, theta: 0 }) as BsGreeks
   const premiumValue = (summary?.premiumValue ?? 0) as number
-  const metrics = summary?.metrics ?? { intrinsicValue: 0, timeValue: 0, breakeven: 0, leverage: 0, moneyness: '', knockoutDistance: 0, dailyChange: 0 }
+  const metrics = summary?.metrics ?? { intrinsicValue: 0, timeValue: 0, breakeven: 0, leverage: 0, moneyness: '', knockoutDistance: 0, dailyChange: 0, koPrice: 0 }
   const chartData = summary?.chartData ?? []
   const factorHistogram = summary?.factorHistogram ?? []
 
-  const productLabels = {
-    warrant: 'Optionsschein',
-    knockout: 'Knock-Out',
-    factor: 'Faktor-Zertifikat'
+  const productLabels: Record<ProductType, string> = {
+    warrant: t('product.warrant'),
+    knockout: t('product.knockout'),
+    factor: t('product.factor')
+  }
+
+  const getMoneyness = (m: string) => {
+    if (m === 'Im Geld') return t('metrics.itm')
+    if (m === 'Am Geld') return t('metrics.atm')
+    if (m === 'Aus dem Geld') return t('metrics.otm')
+    if (m === 'Sicher') return t('metrics.safe')
+    if (m === 'Gefährdet') return t('metrics.atRisk')
+    if (m === 'Ausgeknockt') return t('metrics.knockedOut')
+    if (m === 'Long') return t('product.long')
+    if (m === 'Short') return t('product.short')
+    return m
+  }
+
+  const showInfo = (titleKey: string, infoKey: string) => {
+    setModalInfo({ title: t(titleKey), content: t(infoKey) })
   }
 
   return (
     <div className="calculator">
+      {modalInfo && (
+        <InfoModal
+          title={modalInfo.title}
+          content={modalInfo.content}
+          onClose={() => setModalInfo(null)}
+        />
+      )}
+
       <div className="input-section">
-        <h2>Produkt</h2>
+        <h2>{t('product.title')}</h2>
         
         <div className="product-select">
           {(['warrant', 'knockout', 'factor'] as ProductType[]).map(type => (
-            <button
-              key={type}
-              className={`product-btn ${params.productType === type ? 'active' : ''}`}
-              onClick={() => updateParam('productType', type)}
-            >
-              {productLabels[type]}
-            </button>
+            <div key={type} className="product-btn-wrapper">
+              <button
+                className={`product-btn ${params.productType === type ? 'active' : ''}`}
+                onClick={() => updateParam('productType', type)}
+              >
+                {productLabels[type]}
+              </button>
+              <button
+                className="info-btn"
+                onClick={(e) => { e.stopPropagation(); showInfo(productLabels[type], t(`info.${type}`)) }}
+                title={t(`info.${type}`)}
+              >
+                <InfoIcon size={14} />
+              </button>
+            </div>
           ))}
         </div>
 
@@ -101,18 +154,21 @@ export default function WarrantCalculator() {
             className={`toggle-btn ${params.direction === 'call' ? 'active call' : ''}`}
             onClick={() => updateParam('direction', 'call')}
           >
-            {params.productType === 'factor' ? 'Long' : 'Call'}
+            {params.productType === 'factor' ? t('product.long') : t('product.call')}
           </button>
           <button 
             className={`toggle-btn ${params.direction === 'put' ? 'active put' : ''}`}
             onClick={() => updateParam('direction', 'put')}
           >
-            {params.productType === 'factor' ? 'Short' : 'Put'}
+            {params.productType === 'factor' ? t('product.short') : t('product.put')}
           </button>
         </div>
 
         <div className="input-group">
-          <label>Aktueller Kurs des Basiswerts (EUR)</label>
+          <label className="label-with-info">
+            {t('inputs.currentPrice')}
+            <button className="label-info-btn" onClick={() => showInfo(t('inputs.currentPrice'), t('info.currentPrice'))}><InfoIcon size={12} /></button>
+          </label>
           <input
             type="number"
             value={params.currentPrice}
@@ -129,7 +185,10 @@ export default function WarrantCalculator() {
 
         {params.productType !== 'factor' && (
           <div className="input-group">
-            <label>{params.productType === 'knockout' ? 'Basispreis (Strike)' : 'Basispreis / Strike'} (EUR)</label>
+            <label className="label-with-info">
+              {params.productType === 'knockout' ? t('inputs.strikeKnockout') : t('inputs.strikePrice')}
+              <button className="label-info-btn" onClick={() => showInfo(t('inputs.strikePrice'), t('info.strikePrice'))}><InfoIcon size={12} /></button>
+            </label>
             <input
               type="number"
               value={params.strikePrice}
@@ -148,7 +207,10 @@ export default function WarrantCalculator() {
         {params.productType === 'warrant' && (
           <>
             <div className="input-group">
-              <label>Implizite Vola (%)</label>
+              <label className="label-with-info">
+                {t('inputs.impliedVol')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.impliedVol'), t('info.impliedVol'))}><InfoIcon size={12} /></button>
+              </label>
               <input
                 type="number"
                 value={params.impliedVol}
@@ -180,7 +242,10 @@ export default function WarrantCalculator() {
               />
             </div>
             <div className="input-group">
-              <label>Laufzeit (Tage, max 1095)</label>
+              <label className="label-with-info">
+                {t('inputs.maturity')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.maturity'), t('info.maturity'))}><InfoIcon size={12} /></button>
+              </label>
               <input
                 type="number"
                 value={params.maturityDays}
@@ -214,7 +279,10 @@ export default function WarrantCalculator() {
               />
             </div>
             <div className="input-group">
-              <label>Drift p.a. (%)</label>
+              <label className="label-with-info">
+                {t('inputs.drift')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.drift'), t('info.drift'))}><InfoIcon size={12} /></button>
+              </label>
               <input
                 type="number"
                 value={params.driftPct}
@@ -248,7 +316,10 @@ export default function WarrantCalculator() {
               />
             </div>
             <div className="input-group">
-              <label>Risikofreier Zins p.a. (%)</label>
+              <label className="label-with-info">
+                {t('inputs.riskFree')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.riskFree'), t('info.riskFree'))}><InfoIcon size={12} /></button>
+              </label>
               <input
                 type="number"
                 value={params.riskFreePct}
@@ -282,11 +353,14 @@ export default function WarrantCalculator() {
               />
             </div>
             <div className="input-group">
-              <label>Bezugsverhältnis (z.B. 0.1 = 1:10)</label>
+              <label className="label-with-info">
+                {t('inputs.ratio')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.ratio'), t('info.ratio'))}><InfoIcon size={12} /></button>
+              </label>
               <input
                 type="number"
                 value={params.ratio}
-                onChange={e => updateParam('ratio', parseFloat(e.target.value) || 0.1)}
+                onChange={e => updateParam('ratio', parseFloat(e.target.value) || 1)}
                 step="0.01"
               />
               <input
@@ -304,7 +378,10 @@ export default function WarrantCalculator() {
         {params.productType === 'knockout' && (
           <>
             <div className="input-group">
-              <label>Knock-Out Barriere (EUR)</label>
+              <label className="label-with-info">
+                {t('inputs.knockoutBarrier')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.knockoutBarrier'), t('info.knockoutBarrier'))}><InfoIcon size={12} /></button>
+              </label>
               <input
                 type="number"
                 value={params.knockoutBarrier}
@@ -319,11 +396,14 @@ export default function WarrantCalculator() {
               />
             </div>
             <div className="input-group">
-              <label>Bezugsverhältnis</label>
+              <label className="label-with-info">
+                {t('inputs.ratioSimple')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.ratioSimple'), t('info.ratio'))}><InfoIcon size={12} /></button>
+              </label>
               <input
                 type="number"
                 value={params.ratio}
-                onChange={e => updateParam('ratio', parseFloat(e.target.value) || 0.1)}
+                onChange={e => updateParam('ratio', parseFloat(e.target.value) || 1)}
                 step="0.01"
               />
               <input
@@ -340,7 +420,10 @@ export default function WarrantCalculator() {
 
         {params.productType === 'factor' && (
           <div className="input-group">
-            <label>Hebelfaktor</label>
+            <label className="label-with-info">
+              {t('inputs.factor')}
+              <button className="label-info-btn" onClick={() => showInfo(t('inputs.factor'), t('info.factor'))}><InfoIcon size={12} /></button>
+            </label>
             <input
               type="number"
               value={params.factor}
@@ -357,7 +440,10 @@ export default function WarrantCalculator() {
         )}
         {params.productType === 'factor' && (
           <div className="input-group">
-            <label>Anpassungsschwelle (% pro Tag)</label>
+            <label className="label-with-info">
+              {t('inputs.adjustmentThreshold')}
+              <button className="label-info-btn" onClick={() => showInfo(t('inputs.adjustmentThreshold'), t('info.adjustmentThreshold'))}><InfoIcon size={12} /></button>
+            </label>
             <input
               type="number"
               value={params.adjustmentThreshold}
@@ -377,30 +463,35 @@ export default function WarrantCalculator() {
 
       <div className="results-section">
         <div className="metrics">
-          <h2>Kennzahlen</h2>
+          <h2>{t('metrics.title')}</h2>
           <div className="metrics-grid">
-            <div className="metric-card">
-              <span className="metric-label">Status</span>
+            <div className="metric-card clickable" onClick={() => showInfo(t('metrics.status'), t('info.status'))}>
+              <span className="info-icon"><InfoIcon size={12} /></span>
+              <span className="metric-label">{t('metrics.status')}</span>
               <span className={`metric-value status ${
                 metrics.moneyness === 'Im Geld' || metrics.moneyness === 'Sicher' || metrics.moneyness === 'Long' ? 'itm' : 
                 metrics.moneyness === 'Am Geld' ? 'atm' : 
+                metrics.moneyness === 'Gefährdet' ? 'atrisk' :
                 metrics.moneyness === 'Ausgeknockt' ? 'knockout' : 'otm'
               }`}>
-                {metrics.moneyness}
+                {getMoneyness(metrics.moneyness)}
               </span>
             </div>
             {params.productType === 'warrant' && (
               <>
-                <div className="metric-card">
-                  <span className="metric-label">Innerer Wert</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.intrinsicValue'), t('info.intrinsicValue'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.intrinsicValue')}</span>
                   <span className="metric-value">{metrics.intrinsicValue.toFixed(2)} EUR</span>
                 </div>
-                <div className="metric-card">
-                  <span className="metric-label">Zeitwert</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.timeValue'), t('info.timeValue'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.timeValue')}</span>
                   <span className="metric-value">{metrics.timeValue.toFixed(2)} EUR</span>
                 </div>
-                <div className="metric-card">
-                  <span className="metric-label">Break-Even</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.breakeven'), t('info.breakeven'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.breakeven')}</span>
                   <span className="metric-value">{metrics.breakeven.toFixed(2)} EUR</span>
                 </div>
               </>
@@ -408,12 +499,24 @@ export default function WarrantCalculator() {
             
             {params.productType === 'knockout' && (
               <>
-                <div className="metric-card">
-                  <span className="metric-label">Wert</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.fairValue'), t('info.value'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.fairValue')}</span>
+                  <span className="metric-value">{(metrics.koPrice ?? metrics.intrinsicValue).toFixed(2)} EUR</span>
+                </div>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.intrinsicValue'), t('info.intrinsicValue'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.intrinsicValue')}</span>
                   <span className="metric-value">{metrics.intrinsicValue.toFixed(2)} EUR</span>
                 </div>
-                <div className="metric-card">
-                  <span className="metric-label">KO-Abstand</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.timeValue'), t('info.timeValue'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.timeValue')}</span>
+                  <span className="metric-value">{metrics.timeValue.toFixed(2)} EUR</span>
+                </div>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.koDistance'), t('info.koDistance'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.koDistance')}</span>
                   <span className={`metric-value ${metrics.knockoutDistance < 5 ? 'loss' : ''}`}>
                     {metrics.knockoutDistance.toFixed(1)}%
                   </span>
@@ -422,51 +525,60 @@ export default function WarrantCalculator() {
             )}
             
             {params.productType === 'factor' && (
-              <div className="metric-card">
-                <span className="metric-label">Bei +1% Basiswert</span>
+              <div className="metric-card clickable" onClick={() => showInfo(t('metrics.onePlus'), t('info.onePlus'))}>
+                <span className="info-icon"><InfoIcon size={12} /></span>
+                <span className="metric-label">{t('metrics.onePlus')}</span>
                 <span className="metric-value profit">
                   {params.direction === 'call' ? '+' : '-'}{params.factor}%
                 </span>
               </div>
             )}
 
-            <div className="metric-card">
-              <span className="metric-label">Hebel</span>
+            <div className="metric-card clickable" onClick={() => showInfo(t('metrics.leverage'), t('info.leverage'))}>
+              <span className="info-icon"><InfoIcon size={12} /></span>
+              <span className="metric-label">{t('metrics.leverage')}</span>
               <span className="metric-value">{metrics.leverage.toFixed(2)}x</span>
             </div>
             
             {params.productType === 'warrant' && (
               <>
-                <div className="metric-card">
-                  <span className="metric-label">Preis B&S</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.bsPrice'), t('info.bsPrice'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.bsPrice')}</span>
                   <span className="metric-value">{bsPrice.toFixed(3)} EUR</span>
                 </div>
-                <div className="metric-card">
-                  <span className="metric-label">Delta</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.delta'), t('info.delta'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.delta')}</span>
                   <span className="metric-value">{bsGreeks.delta.toFixed(3)}</span>
                 </div>
-                <div className="metric-card">
-                  <span className="metric-label">Gamma</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.gamma'), t('info.gamma'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.gamma')}</span>
                   <span className="metric-value">{bsGreeks.gamma.toFixed(5)}</span>
                 </div>
-                <div className="metric-card">
-                  <span className="metric-label">Vega</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.vega'), t('info.vega'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.vega')}</span>
                   <span className="metric-value">{bsGreeks.vega.toFixed(3)}</span>
                 </div>
-                <div className="metric-card">
-                  <span className="metric-label">Theta (p/Tag)</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.theta'), t('info.theta'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.theta')}</span>
                   <span className="metric-value">{bsGreeks.theta.toFixed(3)}</span>
                 </div>
-                <div className="metric-card">
-                  <span className="metric-label">Max. Verlust</span>
+                <div className="metric-card clickable" onClick={() => showInfo(t('metrics.maxLoss'), t('info.maxLoss'))}>
+                  <span className="info-icon"><InfoIcon size={12} /></span>
+                  <span className="metric-label">{t('metrics.maxLoss')}</span>
                   <span className="metric-value loss">-{premiumValue.toFixed(2)} EUR</span>
                 </div>
               </>
             )}
             
             {params.productType === 'knockout' && (
-              <div className="metric-card">
-                <span className="metric-label">Max. Verlust</span>
+              <div className="metric-card clickable" onClick={() => showInfo(t('metrics.maxLoss'), t('info.maxLoss'))}>
+                <span className="info-icon"><InfoIcon size={12} /></span>
+                <span className="metric-label">{t('metrics.maxLoss')}</span>
                 <span className="metric-value loss">-100%</span>
               </div>
             )}
@@ -476,24 +588,31 @@ export default function WarrantCalculator() {
         <div className="chart-container">
           <h2>
             {params.productType === 'factor' 
-              ? 'Tägliche Performance' 
-              : 'Renditeprofil bei Fälligkeit'}
+              ? t('charts.dailyPerformance')
+              : t('charts.payoffAtMaturity')}
           </h2>
-          <PayoffChart 
-            data={chartData} 
-            type={params.direction} 
-            breakeven={metrics.breakeven}
-            productType={params.productType}
-            knockoutBarrier={params.knockoutBarrier}
-            histogram={factorHistogram}
-            currentPrice={params.currentPrice}
-            strikePrice={params.strikePrice}
-          />
+          {summaryLoading ? (
+            <div className="chart-loader">
+              <div className="loader-spinner"></div>
+              <span>{t('loading', 'Loading...')}</span>
+            </div>
+          ) : (
+            <PayoffChart 
+              data={chartData} 
+              type={params.direction} 
+              breakeven={metrics.breakeven}
+              productType={params.productType}
+              knockoutBarrier={params.knockoutBarrier}
+              histogram={factorHistogram}
+              currentPrice={params.currentPrice}
+              strikePrice={params.strikePrice}
+            />
+          )}
         </div>
 
         {params.productType !== 'factor' && (
           <div className="chart-container mc-block">
-            <h2>{params.productType === 'warrant' ? 'Rendite-Verteilung' : 'Rendite-Verteilung (Monte Carlo)'}</h2>
+            <h2>{params.productType === 'warrant' ? t('charts.returnDistribution') : t('charts.returnDistributionMC')}</h2>
             <MonteCarloSimulator
               productType={params.productType}
               direction={params.direction}
@@ -513,7 +632,7 @@ export default function WarrantCalculator() {
         )}
 
         <div className="chart-container surface-block">
-          <h2>Rendite-Heatmap</h2>
+          <h2>{t('charts.returnHeatmap')}</h2>
           <PayoffSurface
             productType={params.productType}
             direction={params.direction}
@@ -533,52 +652,39 @@ export default function WarrantCalculator() {
 
         {params.productType === 'factor' && (
           <div className="chart-container path-container">
-            <h2>Pfadabhängigkeit Simulation</h2>
+            <h2>{t('charts.pathDependency')}</h2>
             <PathDependencyChart factor={params.factor} direction={params.direction} adjustmentThreshold={params.adjustmentThreshold} />
           </div>
         )}
 
         <div className="explanation">
-          <h3>{productLabels[params.productType]} - {params.direction === 'call' ? (params.productType === 'factor' ? 'Long' : 'Call') : (params.productType === 'factor' ? 'Short' : 'Put')}</h3>
+          <h3>{productLabels[params.productType]} - {params.direction === 'call' ? (params.productType === 'factor' ? t('product.long') : t('product.call')) : (params.productType === 'factor' ? t('product.short') : t('product.put'))}</h3>
           {params.productType === 'warrant' && params.direction === 'call' && (
-            <p>
-              Sie setzen auf <strong>steigende Kurse</strong>. Liegt der Basiswert bei Fälligkeit über {params.strikePrice.toFixed(2)} EUR, 
-              erhalten Sie die Differenz multipliziert mit dem Bezugsverhältnis. 
-              Ihr Break-Even liegt bei <strong>{metrics.breakeven.toFixed(2)} EUR</strong>. 
-              Darunter verfällt der Optionsschein wertlos.
-            </p>
+            <p>{t('explanation.warrantCall', { strike: params.strikePrice.toFixed(2), breakeven: metrics.breakeven.toFixed(2) })}</p>
           )}
           {params.productType === 'warrant' && params.direction === 'put' && (
-            <p>
-              Sie setzen auf <strong>fallende Kurse</strong>. Liegt der Basiswert bei Fälligkeit unter {params.strikePrice.toFixed(2)} EUR, 
-              erhalten Sie die Differenz multipliziert mit dem Bezugsverhältnis. 
-              Ihr Break-Even liegt bei <strong>{metrics.breakeven.toFixed(2)} EUR</strong>. 
-              Darüber verfällt der Optionsschein wertlos.
-            </p>
+            <p>{t('explanation.warrantPut', { strike: params.strikePrice.toFixed(2), breakeven: metrics.breakeven.toFixed(2) })}</p>
           )}
           {params.productType === 'knockout' && params.direction === 'call' && (
             <p>
-              <strong>Knock-Out Long:</strong> Sie profitieren von steigenden Kursen mit konstantem Hebel. 
-              <span className="warning"> Achtung: Fällt der Basiswert auf oder unter {params.knockoutBarrier.toFixed(2)} EUR, 
-              verfällt das Produkt sofort wertlos!</span> Aktueller Abstand zur Barriere: <strong>{metrics.knockoutDistance.toFixed(1)}%</strong>.
+              <strong>{t('explanation.knockoutCall')}</strong>
+              <span className="warning"> {t('explanation.knockoutCallWarning', { barrier: params.knockoutBarrier.toFixed(2) })}</span> {t('explanation.knockoutCallDistance')} <strong>{metrics.knockoutDistance.toFixed(1)}%</strong>.
             </p>
           )}
           {params.productType === 'knockout' && params.direction === 'put' && (
             <p>
-              <strong>Knock-Out Short:</strong> Sie profitieren von fallenden Kursen mit konstantem Hebel. 
-              <span className="warning"> Achtung: Steigt der Basiswert auf oder über {params.knockoutBarrier.toFixed(2)} EUR, 
-              verfällt das Produkt sofort wertlos!</span> Aktueller Abstand zur Barriere: <strong>{metrics.knockoutDistance.toFixed(1)}%</strong>.
+              <strong>{t('explanation.knockoutPut')}</strong>
+              <span className="warning"> {t('explanation.knockoutPutWarning', { barrier: params.knockoutBarrier.toFixed(2) })}</span> {t('explanation.knockoutCallDistance')} <strong>{metrics.knockoutDistance.toFixed(1)}%</strong>.
             </p>
+          )}
+          {params.productType === 'knockout' && (
+            <p className="info-note">{t('explanation.knockoutBarrierType')}</p>
           )}
           {params.productType === 'factor' && (
             <p>
-              <strong>Faktor {params.factor}x {params.direction === 'call' ? 'Long' : 'Short'}:</strong> Das Zertifikat bildet die 
-              <strong> tägliche</strong> prozentuale Veränderung des Basiswerts mit Faktor {params.factor} ab. 
-              {params.direction === 'call' 
-                ? ` Steigt der Basiswert um 1%, gewinnt das Zertifikat ${params.factor}%.`
-                : ` Fällt der Basiswert um 1%, gewinnt das Zertifikat ${params.factor}%.`}
-              <span className="warning"> Achtung: Pfadabhängigkeit! Bei längerer Haltedauer kann die Performance 
-              erheblich vom erwarteten Ergebnis abweichen.</span>
+              <strong>{t('explanation.factor', { factor: params.factor, direction: params.direction === 'call' ? t('product.long') : t('product.short') })}</strong>
+              {' '}{params.direction === 'call' ? t('explanation.factorCallExample', { factor: params.factor }) : t('explanation.factorPutExample', { factor: params.factor })}
+              <span className="warning"> {t('explanation.factorWarning')}</span>
             </p>
           )}
         </div>

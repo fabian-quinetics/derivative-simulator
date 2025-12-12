@@ -25,6 +25,17 @@
   text-align: center;
   padding: 2.5rem 1rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+.logo-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.logo-img {
+  height: 50px;
+  border-radius: 10px;
 }
 
 .header h1 {
@@ -38,6 +49,56 @@
   color: var(--text-secondary);
   margin-top: 0.4rem;
   font-size: 0.9rem;
+}
+
+.header-buttons {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ai-predictions-btn {
+  background: linear-gradient(135deg, var(--accent-gold), #d97706);
+  border: none;
+  color: #000;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.ai-predictions-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3);
+}
+
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.lang-toggle:hover {
+  background: var(--bg-primary);
+  border-color: var(--accent-gold);
+  color: var(--text-primary);
 }
 
 main {
@@ -82,7 +143,14 @@ main {
   margin-bottom: 1.25rem;
 }
 
+.product-btn-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
 .product-btn {
+  flex: 1;
   padding: 0.6rem 0.9rem;
   border: 1px solid var(--border-color);
   background: transparent;
@@ -93,6 +161,28 @@ main {
   border-radius: 6px;
   font-family: inherit;
   text-align: left;
+}
+
+.info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 6px;
+}
+
+.info-btn:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.info-btn svg {
+  display: block;
 }
 
 .product-btn:hover {
@@ -151,6 +241,34 @@ main {
   margin-bottom: 0.4rem;
   color: var(--text-secondary);
   font-size: 0.75rem;
+}
+
+.label-with-info {
+  display: flex !important;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.label-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+
+.label-info-btn:hover {
+  opacity: 1;
+  color: var(--accent-gold);
+}
+
+.label-info-btn svg {
+  display: block;
 }
 
 .input-group input[type="number"] {
@@ -222,6 +340,7 @@ main {
 .metric-value.status.itm { color: var(--accent-call); }
 .metric-value.status.atm { color: var(--accent-gold); }
 .metric-value.status.otm { color: var(--accent-put); }
+.metric-value.status.atrisk { color: #f97316; }
 .metric-value.status.knockout { color: var(--accent-knockout); }
 .metric-value.loss { color: var(--accent-put); }
 .metric-value.profit { color: var(--accent-call); }
@@ -255,6 +374,40 @@ main {
 
 .explanation strong { color: var(--text-primary); }
 .explanation .warning { color: var(--accent-knockout); display: block; margin-top: 0.4rem; }
+.explanation .info-note {
+  color: var(--accent-gold);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(234, 179, 8, 0.1);
+  border-radius: 4px;
+  border-left: 3px solid var(--accent-gold);
+}
+
+.chart-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 1rem;
+  color: var(--text-secondary);
+}
+
+.loader-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-gold);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .footer {
   text-align: center;
@@ -362,3 +515,96 @@ main {
 .heat-row-group { display: contents; }
 .heat-row-header { display: flex; align-items: center; color: var(--text-secondary); font-size: 0.8rem; padding-left: 4px; }
 .heat-cell { height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #0f0f14; font-weight: 600; font-size: 0.85rem; }
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 1.25rem;
+}
+
+.modal-body p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.metric-card.clickable,
+.product-btn.has-info {
+  cursor: pointer;
+  position: relative;
+}
+
+.metric-card.clickable:hover {
+  border-color: var(--accent-gold);
+}
+
+.info-icon {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-icon svg {
+  display: block;
+}
+
+.metric-card.clickable:hover .info-icon {
+  opacity: 1;
+  color: var(--accent-gold);
+}

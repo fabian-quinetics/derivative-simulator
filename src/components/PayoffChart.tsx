@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, ComposedChart, Bar } from 'recharts'
 
 interface PayoffChartProps {
@@ -12,6 +13,8 @@ interface PayoffChartProps {
 }
 
 export default function PayoffChart({ data, type, breakeven, productType, knockoutBarrier, histogram, currentPrice, strikePrice }: PayoffChartProps) {
+  const { t } = useTranslation()
+
   if (productType === 'factor' && histogram && histogram.length > 0) {
     const maxCount = Math.max(...histogram.map(h => h.count))
     return (
@@ -20,13 +23,13 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" />
           <XAxis
             dataKey="bucket"
-            label={{ value: 'Zertifikat-Performance (%)', position: 'bottom', fill: '#666' }}
+            label={{ value: t('payoffChart.certPerformance'), position: 'bottom', fill: '#666' }}
             tick={{ fill: '#888' }}
             axisLine={{ stroke: '#2a2a32' }}
           />
           <YAxis
             domain={[0, Math.ceil(maxCount + maxCount * 0.1)]}
-            label={{ value: 'Häufigkeit', angle: -90, position: 'insideLeft', fill: '#666' }}
+            label={{ value: t('payoffChart.frequency'), angle: -90, position: 'insideLeft', fill: '#666' }}
             tick={{ fill: '#888' }}
             axisLine={{ stroke: '#2a2a32' }}
           />
@@ -37,7 +40,7 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
               borderRadius: '6px'
             }}
             labelStyle={{ color: '#f1f1f1' }}
-            formatter={(value: number, name: string) => [`${value}`, name === 'count' ? 'Häufigkeit' : '']}
+            formatter={(value: number, name: string) => [`${value}`, name === 'count' ? t('payoffChart.frequency') : '']}
             labelFormatter={label => `${label}%`}
           />
           <ReferenceLine x={0} stroke="#666" strokeDasharray="3 3" />
@@ -54,10 +57,10 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
   const yDomain = [Math.floor(minPayoff - yPad), Math.ceil(maxPayoff + yPad)]
 
   const xLabel = productType === 'factor' 
-    ? 'Tägliche Veränderung Basiswert (%)' 
-    : 'Kurs bei Fälligkeit (EUR)'
+    ? t('payoffChart.dailyChange')
+    : t('payoffChart.priceAtMaturity')
   
-  const yLabel = 'Rendite (%)'
+  const yLabel = t('payoffChart.return')
 
   const pricesRaw = data.map(d => d.price)
   if (productType !== 'factor') {
@@ -103,10 +106,10 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
             borderRadius: '6px'
           }}
           labelStyle={{ color: '#f1f1f1' }}
-          formatter={(value: number) => [`${value.toFixed(1)}%`, 'Rendite']}
+          formatter={(value: number) => [`${value.toFixed(1)}%`, t('payoffChart.return').replace(' (%)', '')]}
           labelFormatter={(label) => productType === 'factor' 
-            ? `Basiswert: ${label > 0 ? '+' : ''}${label}%` 
-            : `Kurs: ${label} EUR`
+            ? `${t('payoffChart.underlying')}: ${label > 0 ? '+' : ''}${label}%` 
+            : `${t('payoffChart.price')}: ${label} EUR`
           }
         />
         <ReferenceLine y={0} stroke="#666" strokeWidth={2} />
@@ -116,7 +119,7 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
             x={breakeven} 
             stroke="#ffab00" 
             strokeDasharray="5 5" 
-            label={{ value: 'Break-Even', fill: '#ffab00', position: 'insideTop', dy: 10 }}
+            label={{ value: t('payoffChart.breakeven'), fill: '#ffab00', position: 'insideTop', dy: 10 }}
           />
         )}
         
@@ -125,7 +128,7 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
             x={knockoutBarrier} 
             stroke="#ff1744" 
             strokeWidth={2}
-            label={{ value: 'KNOCK-OUT', fill: '#ff1744', position: 'insideTop', dy: 26, fontWeight: 'bold' as any }}
+            label={{ value: t('payoffChart.knockout'), fill: '#ff1744', position: 'insideTop', dy: 26, fontWeight: 'bold' as any }}
           />
         )}
         
@@ -134,7 +137,7 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
             x={strikePrice} 
             stroke="#00b0ff" 
             strokeDasharray="4 4" 
-            label={{ value: 'Strike', fill: '#00b0ff', position: 'insideTop', dy: 42 }}
+            label={{ value: t('payoffChart.strike'), fill: '#00b0ff', position: 'insideTop', dy: 42 }}
           />
         )}
         {productType !== 'factor' && (
@@ -142,7 +145,7 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
             x={currentPrice} 
             stroke="#8bc34a" 
             strokeDasharray="4 4" 
-            label={{ value: 'Spot', fill: '#8bc34a', position: 'insideTop', dy: 58 }}
+            label={{ value: t('payoffChart.spot'), fill: '#8bc34a', position: 'insideTop', dy: 58 }}
           />
         )}
         

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts'
 
 interface PathDependencyChartProps {
@@ -7,20 +8,19 @@ interface PathDependencyChartProps {
   adjustmentThreshold: number
 }
 
-type Scenario = 'linear_up' | 'linear_down' | 'volatile_sideways' | 'volatile_up' | 'crash_recovery'
-
-const scenarioLabels: Record<Scenario, string> = {
-  linear_up: 'Stetig steigend',
-  linear_down: 'Stetig fallend',
-  volatile_sideways: 'Volatil seitwärts',
-  volatile_up: 'Volatil steigend',
-  crash_recovery: 'Crash & Erholung'
-}
-
 export default function PathDependencyChart({ factor, direction, adjustmentThreshold }: PathDependencyChartProps) {
-  const [scenario, setScenario] = useState<Scenario>('volatile_sideways')
+  const { t } = useTranslation()
+  const [scenario, setScenario] = useState<string>('volatile_sideways')
   const [volatility, setVolatility] = useState(3)
   const [days, setDays] = useState(60)
+
+  const scenarioLabels: Record<string, string> = {
+    linear_up: t('pathDependency.linearUp'),
+    linear_down: t('pathDependency.linearDown'),
+    volatile_sideways: t('pathDependency.volatileSideways'),
+    volatile_up: t('pathDependency.volatileUp'),
+    crash_recovery: t('pathDependency.crashRecovery')
+  }
 
   const data = useMemo(() => {
     const result = []
@@ -76,7 +76,7 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
     }
 
     return result
-  }, [scenario, factor, direction, volatility, days])
+  }, [scenario, factor, direction, volatility, days, adjustmentThreshold])
 
   const finalBase = data[data.length - 1]?.base || 100
   const finalCert = data[data.length - 1]?.cert || 100
@@ -89,9 +89,9 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
     <div className="path-dependency">
       <div className="path-controls">
         <div className="scenario-select">
-          <label>Szenario</label>
+          <label>{t('pathDependency.scenario')}</label>
           <div className="scenario-buttons">
-            {(Object.keys(scenarioLabels) as Scenario[]).map(s => (
+            {Object.keys(scenarioLabels).map(s => (
               <button
                 key={s}
                 className={`scenario-btn ${scenario === s ? 'active' : ''}`}
@@ -105,7 +105,7 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
 
         <div className="path-params">
           <div className="param">
-            <label>Volatilität: {volatility}%</label>
+            <label>{t('pathDependency.volatility')}: {volatility}%</label>
             <input
               type="range"
               min="1"
@@ -116,7 +116,7 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
             />
           </div>
           <div className="param">
-            <label>Tage: {days}</label>
+            <label>{t('pathDependency.days')}: {days}</label>
             <input
               type="range"
               min="20"
@@ -135,12 +135,12 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" />
             <XAxis 
               dataKey="day" 
-              label={{ value: 'Handelstage', position: 'bottom', fill: '#aaa' }}
+              label={{ value: t('pathDependency.tradingDays'), position: 'bottom', fill: '#aaa' }}
               tick={{ fill: '#888' }}
             />
             <YAxis 
               domain={['auto', 'auto']}
-              label={{ value: 'Wert (%)', angle: -90, position: 'insideLeft', fill: '#aaa' }}
+              label={{ value: t('pathDependency.value'), angle: -90, position: 'insideLeft', fill: '#aaa' }}
               tick={{ fill: '#888' }}
             />
             <Tooltip 
@@ -148,12 +148,12 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
               labelStyle={{ color: '#f1f1f1' }}
               formatter={(value: number, name: string) => [
                 `${value.toFixed(2)}%`,
-                name === 'base' ? 'Basiswert' : 'Zertifikat'
+                name === 'base' ? t('pathDependency.underlying') : t('pathDependency.certificate')
               ]}
-              labelFormatter={(label) => `Tag ${label}`}
+              labelFormatter={(label) => `${t('tooltip.day')} ${label}`}
             />
             <Legend 
-              formatter={(value) => value === 'base' ? 'Basiswert' : `Faktor ${factor}x ${direction === 'call' ? 'Long' : 'Short'}`}
+              formatter={(value) => value === 'base' ? t('pathDependency.underlying') : `${t('inputs.factor')} ${factor}x ${direction === 'call' ? t('product.long') : t('product.short')}`}
             />
             <ReferenceLine y={100} stroke="#666" strokeDasharray="3 3" />
             <Line type="monotone" dataKey="base" stroke="#ffab00" strokeWidth={2} dot={false} />
@@ -164,25 +164,25 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
 
       <div className="path-results">
         <div className="result-card">
-          <span className="result-label">Basiswert</span>
+          <span className="result-label">{t('pathDependency.underlying')}</span>
           <span className={`result-value ${baseReturn >= 0 ? 'profit' : 'loss'}`}>
             {baseReturn >= 0 ? '+' : ''}{baseReturn.toFixed(2)}%
           </span>
         </div>
         <div className="result-card">
-          <span className="result-label">Zertifikat</span>
+          <span className="result-label">{t('pathDependency.certificate')}</span>
           <span className={`result-value ${certReturn >= 0 ? 'profit' : 'loss'}`}>
             {certReturn >= 0 ? '+' : ''}{certReturn.toFixed(2)}%
           </span>
         </div>
         <div className="result-card">
-          <span className="result-label">Erwartete Rendite</span>
+          <span className="result-label">{t('pathDependency.expectedReturn')}</span>
           <span className="result-value expected">
             {expectedReturn >= 0 ? '+' : ''}{expectedReturn.toFixed(2)}%
           </span>
         </div>
         <div className="result-card highlight">
-          <span className="result-label">Volatility Drag</span>
+          <span className="result-label">{t('pathDependency.volatilityDrag')}</span>
           <span className={`result-value ${volatilityDrag >= 0 ? 'profit' : 'loss'}`}>
             {volatilityDrag >= 0 ? '+' : ''}{volatilityDrag.toFixed(2)}%
           </span>
@@ -191,13 +191,12 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
 
       <div className="path-explanation">
         <p>
-          <strong>Pfadabhängigkeit:</strong> Das Zertifikat reagiert auf <em>tägliche</em> Veränderungen. 
-          Bei {baseReturn >= 0 ? 'einem Anstieg' : 'einem Rückgang'} des Basiswerts um {Math.abs(baseReturn).toFixed(1)}% 
-          wäre eine {factor}x-gehebelte Rendite von {Math.abs(expectedReturn).toFixed(1)}% zu erwarten gewesen.
+          <strong>{t('pathDependency.explanation')}:</strong> {t('pathDependency.explText1')}{' '}
+          {t('pathDependency.explText2')} {baseReturn >= 0 ? t('pathDependency.rise') : t('pathDependency.fall')} {t('pathDependency.explText3')} {Math.abs(baseReturn).toFixed(1)}% {t('pathDependency.explText4')} {Math.abs(expectedReturn).toFixed(1)}% {t('pathDependency.explText5')}
           {Math.abs(volatilityDrag) > 1 && (
             <span className="drag-warning">
-              {' '}Der <strong>Volatility Drag</strong> von {volatilityDrag.toFixed(1)}% zeigt die Auswirkung der Pfadabhängigkeit.
-              {volatilityDrag < -5 && ' Bei hoher Volatilität kann dies zu erheblichen Verlusten führen!'}
+              {' '}{t('pathDependency.dragWarning')} {volatilityDrag.toFixed(1)}% {t('pathDependency.dragWarning2')}
+              {volatilityDrag < -5 && ` ${t('pathDependency.dragWarning3')}`}
             </span>
           )}
         </p>
@@ -205,4 +204,3 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
     </div>
   )
 }
-
