@@ -132,7 +132,7 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
       <div className="path-chart">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" />
             <XAxis 
               dataKey="day" 
               label={{ value: 'Handelstage', position: 'bottom', fill: '#aaa' }}
@@ -144,8 +144,8 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
               tick={{ fill: '#888' }}
             />
             <Tooltip 
-              contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333', borderRadius: '8px' }}
-              labelStyle={{ color: '#fff' }}
+              contentStyle={{ backgroundColor: '#18181f', border: '1px solid #2a2a32', borderRadius: '6px' }}
+              labelStyle={{ color: '#f1f1f1' }}
               formatter={(value: number, name: string) => [
                 `${value.toFixed(2)}%`,
                 name === 'base' ? 'Basiswert' : 'Zertifikat'

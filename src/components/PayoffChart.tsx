@@ -17,26 +17,26 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
     return (
       <ResponsiveContainer width="100%" height={350}>
         <ComposedChart data={histogram} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" />
           <XAxis
             dataKey="bucket"
-            label={{ value: 'Zertifikat-Performance (%)', position: 'bottom', fill: '#aaa' }}
+            label={{ value: 'Zertifikat-Performance (%)', position: 'bottom', fill: '#666' }}
             tick={{ fill: '#888' }}
-            axisLine={{ stroke: '#444' }}
+            axisLine={{ stroke: '#2a2a32' }}
           />
           <YAxis
             domain={[0, Math.ceil(maxCount + maxCount * 0.1)]}
-            label={{ value: 'Häufigkeit', angle: -90, position: 'insideLeft', fill: '#aaa' }}
+            label={{ value: 'Häufigkeit', angle: -90, position: 'insideLeft', fill: '#666' }}
             tick={{ fill: '#888' }}
-            axisLine={{ stroke: '#444' }}
+            axisLine={{ stroke: '#2a2a32' }}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#1a1a2e',
-              border: '1px solid #333',
-              borderRadius: '8px'
+              backgroundColor: '#18181f',
+              border: '1px solid #2a2a32',
+              borderRadius: '6px'
             }}
-            labelStyle={{ color: '#fff' }}
+            labelStyle={{ color: '#f1f1f1' }}
             formatter={(value: number, name: string) => [`${value}`, name === 'count' ? 'Häufigkeit' : '']}
             labelFormatter={label => `${label}%`}
           />
@@ -49,15 +49,15 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
 
   const minPayoff = Math.min(...data.map(d => d.payoff))
   const maxPayoff = Math.max(...data.map(d => d.payoff))
-  const yDomain = [Math.floor(minPayoff - 2), Math.ceil(maxPayoff + 2)]
+  const ySpan = Math.max(1, maxPayoff - minPayoff)
+  const yPad = Math.max(5, ySpan * 0.05)
+  const yDomain = [Math.floor(minPayoff - yPad), Math.ceil(maxPayoff + yPad)]
 
   const xLabel = productType === 'factor' 
     ? 'Tägliche Veränderung Basiswert (%)' 
     : 'Kurs bei Fälligkeit (EUR)'
   
-  const yLabel = productType === 'factor'
-    ? 'Zertifikat-Performance (%)'
-    : 'Gewinn/Verlust (EUR)'
+  const yLabel = 'Rendite (%)'
 
   const pricesRaw = data.map(d => d.price)
   if (productType !== 'factor') {
@@ -77,7 +77,7 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
   return (
     <ResponsiveContainer width="100%" height={350}>
       <ComposedChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" />
         <XAxis 
           type="number"
           dataKey="price" 
@@ -86,27 +86,24 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
           tickCount={6}
           allowDecimals={false}
           tickFormatter={(v: number) => Math.round(v).toString()}
-          label={{ value: xLabel, position: 'bottom', fill: '#aaa' }}
-          tick={{ fill: '#ccc' }}
-          axisLine={{ stroke: '#666' }}
+          label={{ value: xLabel, position: 'bottom', fill: '#666' }}
+          tick={{ fill: '#888' }}
+          axisLine={{ stroke: '#2a2a32' }}
         />
         <YAxis 
           domain={yDomain}
-          label={{ value: yLabel, angle: -90, position: 'insideLeft', fill: '#aaa' }}
+          label={{ value: yLabel, angle: -90, position: 'insideLeft', fill: '#666' }}
           tick={{ fill: '#888' }}
-          axisLine={{ stroke: '#444' }}
+          axisLine={{ stroke: '#2a2a32' }}
         />
         <Tooltip 
           contentStyle={{ 
-            backgroundColor: '#1a1a2e', 
-            border: '1px solid #333',
-            borderRadius: '8px'
+            backgroundColor: '#18181f', 
+            border: '1px solid #2a2a32',
+            borderRadius: '6px'
           }}
-          labelStyle={{ color: '#fff' }}
-          formatter={(value: number) => [
-            `${value.toFixed(2)}${productType === 'factor' ? '%' : ' EUR'}`, 
-            productType === 'factor' ? 'Performance' : 'Gewinn/Verlust'
-          ]}
+          labelStyle={{ color: '#f1f1f1' }}
+          formatter={(value: number) => [`${value.toFixed(1)}%`, 'Rendite']}
           labelFormatter={(label) => productType === 'factor' 
             ? `Basiswert: ${label > 0 ? '+' : ''}${label}%` 
             : `Kurs: ${label} EUR`

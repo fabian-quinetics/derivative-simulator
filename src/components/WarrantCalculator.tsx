@@ -1,19 +1,12 @@
-import { useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import PayoffChart from './PayoffChart'
 import PathDependencyChart from './PathDependencyChart'
 import MonteCarloSimulator from './MonteCarloSimulator'
 import PayoffSurface from './PayoffSurface'
+import { fetchSummary } from '../api'
 
 type ProductType = 'warrant' | 'knockout' | 'factor'
 type Direction = 'call' | 'put'
-
-const normCdf = (x: number) => {
-  const t = 1 / (1 + 0.2316419 * Math.abs(x))
-  const d = 0.3989423 * Math.exp(-0.5 * x * x)
-  const poly = t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))))
-  const p = d * poly
-  return x > 0 ? 1 - p : p
-}
 
 interface WarrantParams {
   productType: ProductType
@@ -27,43 +20,10 @@ interface WarrantParams {
   impliedVol: number
   maturityDays: number
   driftPct: number
-  rho: number
   riskFreePct: number
 }
 
-type BsGreeks = { delta: number; gamma: number; vega: number; theta: number; rho: number }
-
-const optionPriceBS = (p: WarrantParams): { price: number; greeks: BsGreeks } => {
-  if (p.productType !== 'warrant') return { price: 0, greeks: { delta: 0, gamma: 0, vega: 0, theta: 0, rho: 0 } }
-  const sigma = p.impliedVol / 100
-  const T = Math.max(p.maturityDays / 365, 0.0001)
-  const r = p.riskFreePct / 100
-  const d1 = (Math.log(p.currentPrice / p.strikePrice) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T))
-  const d2 = d1 - sigma * Math.sqrt(T)
-  const call = p.currentPrice * normCdf(d1) - p.strikePrice * Math.exp(-r * T) * normCdf(d2)
-  const put = p.strikePrice * Math.exp(-r * T) * normCdf(-d2) - p.currentPrice * normCdf(-d1)
-  const price = (p.direction === 'call' ? call : put) * p.ratio
-  const pdf = (x: number) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI)
-  const baseDelta = p.direction === 'call' ? normCdf(d1) : normCdf(d1) - 1
-  const delta = baseDelta * p.ratio
-  const gamma = (pdf(d1) / (p.currentPrice * sigma * Math.sqrt(T))) * p.ratio
-  const vega = p.currentPrice * pdf(d1) * Math.sqrt(T) * 0.01 * p.ratio
-  const thetaBase = p.direction === 'call'
-    ? -(p.currentPrice * pdf(d1) * sigma) / (2 * Math.sqrt(T)) - r * p.strikePrice * Math.exp(-r * T) * normCdf(d2)
-    : -(p.currentPrice * pdf(d1) * sigma) / (2 * Math.sqrt(T)) + r * p.strikePrice * Math.exp(-r * T) * normCdf(-d2)
-  const theta = (thetaBase / 365) * p.ratio
-  const rhoBase = p.direction === 'call'
-    ? p.strikePrice * T * Math.exp(-r * T) * normCdf(d2)
-    : -p.strikePrice * T * Math.exp(-r * T) * normCdf(-d2)
-  const rho = rhoBase * 0.01 * p.ratio
-  return { price, greeks: { delta, gamma, vega, theta, rho } }
-}
-
-const optionPriceHeston = (p: WarrantParams) => {
-  if (p.productType !== 'warrant') return 0
-  // Heston deaktiviert – vorübergehend B&S verwenden
-  return optionPriceBS(p).price
-}
+type BsGreeks = { delta: number; gamma: number; vega: number; theta: number }
 
 export default function WarrantCalculator() {
   const [params, setParams] = useState<WarrantParams>({
@@ -78,180 +38,40 @@ export default function WarrantCalculator() {
     impliedVol: 30,
     maturityDays: 365,
     driftPct: 6,
-    rho: -0.3,
     riskFreePct: 1,
   })
   const [impliedVolDraft, setImpliedVolDraft] = useState(30)
   const [maturityDraft, setMaturityDraft] = useState(365)
   const [driftDraft, setDriftDraft] = useState(6)
-  const [rhoDraft, setRhoDraft] = useState(-0.3)
   const [riskFreeDraft, setRiskFreeDraft] = useState(1)
   const impliedVolTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const maturityTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const driftTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const riskFreeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const rhoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const summaryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [summary, setSummary] = useState<any>(null)
 
   const updateParam = <K extends keyof WarrantParams>(key: K, value: WarrantParams[K]) => {
     setParams(prev => ({ ...prev, [key]: value }))
   }
 
-  const { price: bsPrice, greeks: bsGreeks } = useMemo(() => optionPriceBS(params), [params])
-  const hestonPrice = useMemo(() => optionPriceHeston(params), [params])
-  const premiumValue = params.productType === 'warrant' ? bsPrice : 0
-
-  const metrics = useMemo(() => {
-    const { productType, direction, currentPrice, strikePrice, ratio, knockoutBarrier, factor } = params
-    const premium = premiumValue
-
-    if (productType === 'warrant') {
-      let intrinsicValue = 0
-      if (direction === 'call') {
-        intrinsicValue = Math.max(0, (currentPrice - strikePrice) * ratio)
-      } else {
-        intrinsicValue = Math.max(0, (strikePrice - currentPrice) * ratio)
-      }
-      const timeValue = Math.max(0, premium - intrinsicValue)
-      const breakeven = direction === 'call' 
-        ? strikePrice + (premium / ratio)
-        : strikePrice - (premium / ratio)
-      const leverage = premium > 0 ? (currentPrice * ratio) / premium : 0
-      const moneyness = direction === 'call'
-        ? currentPrice > strikePrice ? 'Im Geld' : currentPrice === strikePrice ? 'Am Geld' : 'Aus dem Geld'
-        : currentPrice < strikePrice ? 'Im Geld' : currentPrice === strikePrice ? 'Am Geld' : 'Aus dem Geld'
-      return { intrinsicValue, timeValue, breakeven, leverage, moneyness, knockoutDistance: 0, dailyChange: 0 }
+  useEffect(() => {
+    if (summaryTimer.current) clearTimeout(summaryTimer.current)
+    summaryTimer.current = setTimeout(() => {
+      fetchSummary(params).then(setSummary)
+    }, 150)
+    return () => {
+      if (summaryTimer.current) clearTimeout(summaryTimer.current)
     }
-    
-    if (productType === 'knockout') {
-      let intrinsicValue = direction === 'call'
-        ? Math.max(0, (currentPrice - strikePrice) * ratio)
-        : Math.max(0, (strikePrice - currentPrice) * ratio)
-      const knockoutDistance = direction === 'call'
-        ? ((currentPrice - knockoutBarrier) / currentPrice) * 100
-        : ((knockoutBarrier - currentPrice) / currentPrice) * 100
-      const leverage = currentPrice / (currentPrice - strikePrice) || 0
-      const isKnockedOut = direction === 'call' 
-        ? currentPrice <= knockoutBarrier
-        : currentPrice >= knockoutBarrier
-      return { 
-        intrinsicValue: isKnockedOut ? 0 : intrinsicValue, 
-        timeValue: 0, 
-        breakeven: strikePrice, 
-        leverage: Math.abs(leverage), 
-        moneyness: isKnockedOut ? 'Ausgeknockt' : knockoutDistance > 10 ? 'Sicher' : 'Gefährdet',
-        knockoutDistance,
-        dailyChange: 0
-      }
-    }
-    
-    if (productType === 'factor') {
-      const dailyChange = 1.5
-      const factorReturn = dailyChange * factor
-      return { 
-        intrinsicValue: 0, 
-        timeValue: 0, 
-        breakeven: 0, 
-        leverage: factor,
-        moneyness: direction === 'call' ? 'Long' : 'Short',
-        knockoutDistance: 0,
-        dailyChange: factorReturn
-      }
-    }
-    
-    return { intrinsicValue: 0, timeValue: 0, breakeven: 0, leverage: 0, moneyness: '', knockoutDistance: 0, dailyChange: 0 }
-  }, [params, premiumValue])
-
-  const chartData = useMemo(() => {
-    const { productType, direction, strikePrice, ratio, knockoutBarrier, factor, currentPrice } = params
-    const premium = premiumValue
-    const data = []
-    
-    if (productType === 'warrant') {
-      const mid = (strikePrice + currentPrice) / 2
-      const span = Math.max(strikePrice, currentPrice) * 0.6
-      const start = Math.max(0, mid - span)
-      const end = mid + span
-      for (let price = start; price <= end; price += (end - start) / 50) {
-        let payoff = direction === 'call'
-          ? Math.max(0, (price - strikePrice) * ratio) - premium
-          : Math.max(0, (strikePrice - price) * ratio) - premium
-        data.push({ price: Math.round(price * 100) / 100, payoff: Math.round(payoff * 100) / 100, zero: 0 })
-      }
-    }
-    
-    if (productType === 'knockout') {
-      const range = strikePrice * 0.4
-      const start = direction === 'call' ? knockoutBarrier : strikePrice - range
-      const end = direction === 'call' ? strikePrice + range : knockoutBarrier
-      const buyPrice = direction === 'call'
-        ? (currentPrice - strikePrice) * ratio
-        : (strikePrice - currentPrice) * ratio
-      for (let price = start; price <= end; price += (end - start) / 50) {
-        let value = direction === 'call'
-          ? Math.max(0, (price - strikePrice) * ratio)
-          : Math.max(0, (strikePrice - price) * ratio)
-        const payoff = value - buyPrice
-        data.push({ price: Math.round(price * 100) / 100, payoff: Math.round(payoff * 100) / 100, zero: 0, knockout: knockoutBarrier })
-      }
-    }
-    
-    if (productType === 'factor') {
-      for (let change = -10; change <= 10; change += 0.5) {
-        const factorReturn = change * factor * (direction === 'call' ? 1 : -1)
-        data.push({ price: change, payoff: Math.round(factorReturn * 100) / 100, zero: 0 })
-      }
-    }
-    
-    return data
-  }, [params, premiumValue])
-
-  const factorHistogram = useMemo(() => {
-    if (params.productType !== 'factor') return []
-    const { currentPrice, factor, direction, adjustmentThreshold } = params
-    const volatility = 20
-    const days = 60
-    const sims = 200
-    const drift = 0
-    const randNorm = () => {
-      let u = 0
-      let v = 0
-      while (u === 0) u = Math.random()
-      while (v === 0) v = Math.random()
-      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
-    }
-    const payoffs: number[] = []
-    const dt = 1 / 252
-    const sigma = volatility / 100
-    const mu = drift / 100
-    for (let i = 0; i < sims; i++) {
-      let price = currentPrice
-      let certValue = 1
-      for (let d = 0; d < days; d++) {
-        const z = randNorm()
-        const step = Math.exp((mu - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * z)
-        const prev = price
-        price = price * step
-        const baseChangePct = ((price - prev) / prev) * 100
-        const cappedPct = Math.abs(baseChangePct) > adjustmentThreshold ? Math.sign(baseChangePct) * adjustmentThreshold : baseChangePct
-        const dir = direction === 'call' ? 1 : -1
-        certValue = certValue * (1 + (cappedPct / 100) * factor * dir)
-        if (certValue < 0.001) certValue = 0.001
-      }
-      payoffs.push((certValue - 1) * 100)
-    }
-    if (payoffs.length === 0) return []
-    const min = Math.min(...payoffs)
-    const max = Math.max(...payoffs)
-    const bins = 24
-    const width = (max - min) / bins || 1
-    return new Array(bins).fill(0).map((_, i) => {
-      const start = min + i * width
-      const end = start + width
-      const count = payoffs.filter(v => v >= start && v < end).length
-      const mid = (start + end) / 2
-      return { bucket: Math.round(mid * 10) / 10, count }
-    })
   }, [params])
+
+  const bsPrice = (summary?.bsPrice ?? 0) as number
+  const bsGreeks = (summary?.bsGreeks ?? { delta: 0, gamma: 0, vega: 0, theta: 0 }) as BsGreeks
+  const premiumValue = (summary?.premiumValue ?? 0) as number
+  const metrics = summary?.metrics ?? { intrinsicValue: 0, timeValue: 0, breakeven: 0, leverage: 0, moneyness: '', knockoutDistance: 0, dailyChange: 0 }
+  const chartData = summary?.chartData ?? []
+  const factorHistogram = summary?.factorHistogram ?? []
 
   const productLabels = {
     warrant: 'Optionsschein',
@@ -478,40 +298,6 @@ export default function WarrantCalculator() {
                 onChange={e => updateParam('ratio', parseFloat(e.target.value))}
               />
             </div>
-            <div className="input-group">
-              <label>rho (Korrelation)</label>
-              <input
-                type="number"
-                value={params.rho}
-                onChange={e => {
-                  const v = parseFloat(e.target.value)
-                  setRhoDraft(v)
-                  updateParam('rho', v)
-                }}
-                step="0.05"
-              />
-              <input
-                type="range"
-                min="-0.9"
-                max="0.9"
-                step="0.05"
-                value={rhoDraft}
-                onChange={e => {
-                  const v = parseFloat(e.target.value)
-                  setRhoDraft(v)
-                  if (rhoTimer.current) clearTimeout(rhoTimer.current)
-                  rhoTimer.current = setTimeout(() => updateParam('rho', v), 400)
-                }}
-                onMouseUp={e => {
-                  const v = parseFloat((e.target as HTMLInputElement).value)
-                  updateParam('rho', v)
-                }}
-                onTouchEnd={e => {
-                  const v = parseFloat((e.target as HTMLInputElement).value)
-                  updateParam('rho', v)
-                }}
-              />
-            </div>
           </>
         )}
 
@@ -603,11 +389,6 @@ export default function WarrantCalculator() {
                 {metrics.moneyness}
               </span>
             </div>
-            <div className="metric-card">
-              <span className="metric-label">Basiswert</span>
-              <span className="metric-value">{params.currentPrice.toFixed(2)} EUR</span>
-            </div>
-            
             {params.productType === 'warrant' && (
               <>
                 <div className="metric-card">
@@ -661,18 +442,6 @@ export default function WarrantCalculator() {
                   <span className="metric-value">{bsPrice.toFixed(3)} EUR</span>
                 </div>
                 <div className="metric-card">
-                  <span className="metric-label">Preis Heston</span>
-                  <span className="metric-value">{hestonPrice.toFixed(3)} EUR</span>
-                </div>
-            <div className="metric-card">
-              <span className="metric-label">Drift p.a.</span>
-              <span className="metric-value">{params.driftPct.toFixed(2)}%</span>
-            </div>
-                <div className="metric-card">
-                  <span className="metric-label">Risikofrei p.a.</span>
-                  <span className="metric-value">{params.riskFreePct.toFixed(2)}%</span>
-                </div>
-                <div className="metric-card">
                   <span className="metric-label">Delta</span>
                   <span className="metric-value">{bsGreeks.delta.toFixed(3)}</span>
                 </div>
@@ -687,10 +456,6 @@ export default function WarrantCalculator() {
                 <div className="metric-card">
                   <span className="metric-label">Theta (p/Tag)</span>
                   <span className="metric-value">{bsGreeks.theta.toFixed(3)}</span>
-                </div>
-                <div className="metric-card">
-                  <span className="metric-label">Rho</span>
-                  <span className="metric-value">{bsGreeks.rho.toFixed(3)}</span>
                 </div>
                 <div className="metric-card">
                   <span className="metric-label">Max. Verlust</span>
@@ -712,7 +477,7 @@ export default function WarrantCalculator() {
           <h2>
             {params.productType === 'factor' 
               ? 'Tägliche Performance' 
-              : 'Auszahlungsprofil bei Fälligkeit'}
+              : 'Renditeprofil bei Fälligkeit'}
           </h2>
           <PayoffChart 
             data={chartData} 
@@ -728,7 +493,7 @@ export default function WarrantCalculator() {
 
         {params.productType !== 'factor' && (
           <div className="chart-container mc-block">
-            <h2>Monte-Carlo Payoff</h2>
+            <h2>{params.productType === 'warrant' ? 'Rendite-Verteilung' : 'Rendite-Verteilung (Monte Carlo)'}</h2>
             <MonteCarloSimulator
               productType={params.productType}
               direction={params.direction}
@@ -741,14 +506,14 @@ export default function WarrantCalculator() {
               adjustmentThreshold={params.adjustmentThreshold}
               volatilityPct={params.impliedVol}
               days={params.maturityDays}
-              sims={50}
+              sims={500}
               driftPct={params.driftPct}
             />
           </div>
         )}
 
         <div className="chart-container surface-block">
-          <h2>Payoff-Surface</h2>
+          <h2>Rendite-Heatmap</h2>
           <PayoffSurface
             productType={params.productType}
             direction={params.direction}
@@ -761,6 +526,7 @@ export default function WarrantCalculator() {
             adjustmentThreshold={params.adjustmentThreshold}
             impliedVol={params.impliedVol}
             driftPct={params.driftPct}
+            riskFreePct={params.riskFreePct}
             maturityDays={params.maturityDays}
           />
         </div>
