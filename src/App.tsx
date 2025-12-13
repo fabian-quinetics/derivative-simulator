@@ -16,7 +16,10 @@ function App() {
           <img src={logo} alt="QUINETICS" className="logo-img" />
         </a>
         <h1>{t('header.title')}</h1>
-        <p className="subtitle">{t('header.subtitle')}</p>
+        <div className="disclaimer">
+          <span className="disclaimer-icon">ℹ️</span>
+          <strong>{t('header.disclaimer')}:</strong> {t('header.disclaimerText')}
+        </div>
         <div className="header-buttons">
           <a
             href={BASE_URL}

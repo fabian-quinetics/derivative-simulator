@@ -2,6 +2,8 @@
   "header": {
     "title": "Optionsschein Rechner",
     "subtitle": "Analysieren Sie Call & Put Optionsscheine interaktiv",
+    "disclaimer": "Disclaimer",
+    "disclaimerText": "Alle Ergebnisse sind beispielhaft. Annahmen, Gebühren und Marktverhalten können erheblich von der Realität abweichen. Dies ist keine Anlageberatung.",
     "aiPredictions": "\uD83E\uDD16 Nutze unsere KI Aktien Vorhersagen"
   },
   "footer": {

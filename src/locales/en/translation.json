@@ -2,6 +2,8 @@
   "header": {
     "title": "Warrant / Option Calculator",
     "subtitle": "Analyze Call & Put Options interactively",
+    "disclaimer": "Disclaimer",
+    "disclaimerText": "All results are illustrative. Assumptions, fees, and market behavior can differ materially from reality. This is not investment advice.",
     "aiPredictions": "\uD83E\uDD16 Use our AI stock predictions"
   },
   "footer": {
