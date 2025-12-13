@@ -93,10 +93,10 @@ export default function PayoffSurface(props: Props) {
             </div>
           ))}
 
-          {grid.rows.map((row, i) => (
+          {grid.rows.map((row: { delta: number; days: number; mean: number }[], i: number) => (
             <div key={`r-${horizons[i] ?? i}`} className="heat-row-group">
               <div className="heat-row-header">{(horizons[i] ?? 0)} {t('heatmap.days')}</div>
-              {row.map((cell) => (
+              {row.map((cell: { delta: number; days: number; mean: number }) => (
                 <div
                   key={`${cell.delta}-${cell.days}`}
                   className="heat-cell"

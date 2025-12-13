@@ -67,6 +67,12 @@ export default function WarrantCalculator() {
           newParams.strikePrice = Math.round(newParams.currentPrice * 1.1)
         }
       }
+      if (key === 'productType' && value === 'factor') {
+        newParams.maturityDays = 60
+        setMaturityDraft(60)
+        newParams.impliedVol = 30
+        setImpliedVolDraft(30)
+      }
       return newParams
     })
   }
@@ -101,14 +107,13 @@ export default function WarrantCalculator() {
   }
 
   const getMoneyness = (m: string) => {
-    if (m === 'Im Geld') return t('metrics.itm')
-    if (m === 'Am Geld') return t('metrics.atm')
-    if (m === 'Aus dem Geld') return t('metrics.otm')
-    if (m === 'Sicher') return t('metrics.safe')
-    if (m === 'Gefährdet') return t('metrics.atRisk')
-    if (m === 'Ausgeknockt') return t('metrics.knockedOut')
-    if (m === 'Long') return t('product.long')
-    if (m === 'Short') return t('product.short')
+    if (m === 'itm') return t('metrics.itm')
+    if (m === 'atm') return t('metrics.atm')
+    if (m === 'otm') return t('metrics.otm')
+    if (m === 'knockedOut') return t('metrics.knockedOut')
+    if (m === 'notKnockedOut') return t('metrics.notKnockedOut')
+    if (m === 'long') return t('product.long')
+    if (m === 'short') return t('product.short')
     return m
   }
 
@@ -164,24 +169,26 @@ export default function WarrantCalculator() {
           </button>
         </div>
 
-        <div className="input-group">
-          <label className="label-with-info">
-            {t('inputs.currentPrice')}
-            <button className="label-info-btn" onClick={() => showInfo(t('inputs.currentPrice'), t('info.currentPrice'))}><InfoIcon size={12} /></button>
-          </label>
-          <input
-            type="number"
-            value={params.currentPrice}
-            onChange={e => updateParam('currentPrice', parseFloat(e.target.value) || 0)}
-          />
-          <input
-            type="range"
-            min="10"
-            max="200"
-            value={params.currentPrice}
-            onChange={e => updateParam('currentPrice', parseFloat(e.target.value))}
-          />
-        </div>
+        {params.productType !== 'factor' && (
+          <div className="input-group">
+            <label className="label-with-info">
+              {t('inputs.currentPrice')}
+              <button className="label-info-btn" onClick={() => showInfo(t('inputs.currentPrice'), t('info.currentPrice'))}><InfoIcon size={12} /></button>
+            </label>
+            <input
+              type="number"
+              value={params.currentPrice}
+              onChange={e => updateParam('currentPrice', parseFloat(e.target.value) || 0)}
+            />
+            <input
+              type="range"
+              min="10"
+              max="200"
+              value={params.currentPrice}
+              onChange={e => updateParam('currentPrice', parseFloat(e.target.value))}
+            />
+          </div>
+        )}
 
         {params.productType !== 'factor' && (
           <div className="input-group">
@@ -204,7 +211,7 @@ export default function WarrantCalculator() {
           </div>
         )}
 
-        {params.productType === 'warrant' && (
+        {params.productType !== 'factor' && (
           <>
             <div className="input-group">
               <label className="label-with-info">
@@ -352,27 +359,30 @@ export default function WarrantCalculator() {
                 }}
               />
             </div>
-            <div className="input-group">
-              <label className="label-with-info">
-                {t('inputs.ratio')}
-                <button className="label-info-btn" onClick={() => showInfo(t('inputs.ratio'), t('info.ratio'))}><InfoIcon size={12} /></button>
-              </label>
-              <input
-                type="number"
-                value={params.ratio}
-                onChange={e => updateParam('ratio', parseFloat(e.target.value) || 1)}
-                step="0.01"
-              />
-              <input
-                type="range"
-                min="0.01"
-                max="1"
-                step="0.01"
-                value={params.ratio}
-                onChange={e => updateParam('ratio', parseFloat(e.target.value))}
-              />
-            </div>
           </>
+        )}
+
+        {params.productType === 'warrant' && (
+          <div className="input-group">
+            <label className="label-with-info">
+              {t('inputs.ratio')}
+              <button className="label-info-btn" onClick={() => showInfo(t('inputs.ratio'), t('info.ratio'))}><InfoIcon size={12} /></button>
+            </label>
+            <input
+              type="number"
+              value={params.ratio}
+              onChange={e => updateParam('ratio', parseFloat(e.target.value) || 1)}
+              step="0.01"
+            />
+            <input
+              type="range"
+              min="0.01"
+              max="1"
+              step="0.01"
+              value={params.ratio}
+              onChange={e => updateParam('ratio', parseFloat(e.target.value))}
+            />
+          </div>
         )}
 
         {params.productType === 'knockout' && (
@@ -441,6 +451,83 @@ export default function WarrantCalculator() {
         {params.productType === 'factor' && (
           <div className="input-group">
             <label className="label-with-info">
+              {t('inputs.volatilityAnn')}
+              <button className="label-info-btn" onClick={() => showInfo(t('inputs.volatilityAnn'), t('info.volatilityAnn'))}><InfoIcon size={12} /></button>
+            </label>
+            <input
+              type="number"
+              value={params.impliedVol}
+              onChange={e => {
+                const v = parseFloat(e.target.value) || 0
+                setImpliedVolDraft(v)
+                updateParam('impliedVol', v)
+              }}
+            />
+            <input
+              type="range"
+              min="5"
+              max="120"
+              step="1"
+              value={impliedVolDraft}
+              onChange={e => {
+                const v = parseFloat(e.target.value)
+                setImpliedVolDraft(v)
+                if (impliedVolTimer.current) clearTimeout(impliedVolTimer.current)
+                impliedVolTimer.current = setTimeout(() => updateParam('impliedVol', v), 250)
+              }}
+              onMouseUp={e => {
+                const v = parseFloat((e.target as HTMLInputElement).value)
+                updateParam('impliedVol', v)
+              }}
+              onTouchEnd={e => {
+                const v = parseFloat((e.target as HTMLInputElement).value)
+                updateParam('impliedVol', v)
+              }}
+            />
+          </div>
+        )}
+        {params.productType === 'factor' && (
+          <div className="input-group">
+            <label className="label-with-info">
+              {t('inputs.timeHorizon')}
+              <button className="label-info-btn" onClick={() => showInfo(t('inputs.timeHorizon'), t('info.timeHorizon'))}><InfoIcon size={12} /></button>
+            </label>
+            <input
+              type="number"
+              value={params.maturityDays}
+              onChange={e => {
+                const v = Math.min(250, Math.max(20, parseFloat(e.target.value) || 20))
+                setMaturityDraft(v)
+                updateParam('maturityDays', v)
+              }}
+              step="1"
+            />
+            <input
+              type="range"
+              min="20"
+              max="250"
+              step="10"
+              value={maturityDraft}
+              onChange={e => {
+                const v = parseFloat(e.target.value)
+                setMaturityDraft(v)
+                if (maturityTimer.current) clearTimeout(maturityTimer.current)
+                maturityTimer.current = setTimeout(() => updateParam('maturityDays', v), 250)
+              }}
+              onMouseUp={e => {
+                const v = parseFloat((e.target as HTMLInputElement).value)
+                updateParam('maturityDays', v)
+              }}
+              onTouchEnd={e => {
+                const v = parseFloat((e.target as HTMLInputElement).value)
+                updateParam('maturityDays', v)
+              }}
+            />
+          </div>
+        )}
+        {params.productType === 'factor' && (
+          <div className="input-group">
+            <label className="label-with-info">
               {t('inputs.adjustmentThreshold')}
               <button className="label-info-btn" onClick={() => showInfo(t('inputs.adjustmentThreshold'), t('info.adjustmentThreshold'))}><InfoIcon size={12} /></button>
             </label>
@@ -469,10 +556,9 @@ export default function WarrantCalculator() {
               <span className="info-icon"><InfoIcon size={12} /></span>
               <span className="metric-label">{t('metrics.status')}</span>
               <span className={`metric-value status ${
-                metrics.moneyness === 'Im Geld' || metrics.moneyness === 'Sicher' || metrics.moneyness === 'Long' ? 'itm' : 
-                metrics.moneyness === 'Am Geld' ? 'atm' : 
-                metrics.moneyness === 'Gefährdet' ? 'atrisk' :
-                metrics.moneyness === 'Ausgeknockt' ? 'knockout' : 'otm'
+                metrics.moneyness === 'itm' || metrics.moneyness === 'notKnockedOut' || metrics.moneyness === 'long' ? 'itm' : 
+                metrics.moneyness === 'atm' ? 'atm' : 
+                metrics.moneyness === 'knockedOut' ? 'knockout' : 'otm'
               }`}>
                 {getMoneyness(metrics.moneyness)}
               </span>
@@ -585,30 +671,28 @@ export default function WarrantCalculator() {
           </div>
         </div>
 
-        <div className="chart-container">
-          <h2>
-            {params.productType === 'factor' 
-              ? t('charts.dailyPerformance')
-              : t('charts.payoffAtMaturity')}
-          </h2>
-          {summaryLoading ? (
-            <div className="chart-loader">
-              <div className="loader-spinner"></div>
-              <span>{t('loading', 'Loading...')}</span>
-            </div>
-          ) : (
-            <PayoffChart 
-              data={chartData} 
-              type={params.direction} 
-              breakeven={metrics.breakeven}
-              productType={params.productType}
-              knockoutBarrier={params.knockoutBarrier}
-              histogram={factorHistogram}
-              currentPrice={params.currentPrice}
-              strikePrice={params.strikePrice}
-            />
-          )}
-        </div>
+        {params.productType !== 'factor' && (
+          <div className="chart-container">
+            <h2>{t('charts.payoffAtMaturity')}</h2>
+            {summaryLoading ? (
+              <div className="chart-loader">
+                <div className="loader-spinner"></div>
+                <span>{t('loading', 'Loading...')}</span>
+              </div>
+            ) : (
+              <PayoffChart 
+                data={chartData} 
+                type={params.direction} 
+                breakeven={metrics.breakeven}
+                productType={params.productType}
+                knockoutBarrier={params.knockoutBarrier}
+                histogram={factorHistogram}
+                currentPrice={params.currentPrice}
+                strikePrice={params.strikePrice}
+              />
+            )}
+          </div>
+        )}
 
         {params.productType !== 'factor' && (
           <div className="chart-container mc-block">
@@ -631,29 +715,38 @@ export default function WarrantCalculator() {
           </div>
         )}
 
-        <div className="chart-container surface-block">
-          <h2>{t('charts.returnHeatmap')}</h2>
-          <PayoffSurface
-            productType={params.productType}
-            direction={params.direction}
-            currentPrice={params.currentPrice}
-            strikePrice={params.strikePrice}
-            premium={premiumValue}
-            ratio={params.ratio}
-            knockoutBarrier={params.knockoutBarrier}
-            factor={params.factor}
-            adjustmentThreshold={params.adjustmentThreshold}
-            impliedVol={params.impliedVol}
-            driftPct={params.driftPct}
-            riskFreePct={params.riskFreePct}
-            maturityDays={params.maturityDays}
-          />
-        </div>
+        {params.productType !== 'factor' && (
+          <div className="chart-container surface-block">
+            <h2>{t('charts.returnHeatmap')}</h2>
+            <PayoffSurface
+              productType={params.productType}
+              direction={params.direction}
+              currentPrice={params.currentPrice}
+              strikePrice={params.strikePrice}
+              premium={premiumValue}
+              ratio={params.ratio}
+              knockoutBarrier={params.knockoutBarrier}
+              factor={params.factor}
+              adjustmentThreshold={params.adjustmentThreshold}
+              impliedVol={params.impliedVol}
+              driftPct={params.driftPct}
+              riskFreePct={params.riskFreePct}
+              maturityDays={params.maturityDays}
+            />
+          </div>
+        )}
 
         {params.productType === 'factor' && (
           <div className="chart-container path-container">
             <h2>{t('charts.pathDependency')}</h2>
-            <PathDependencyChart factor={params.factor} direction={params.direction} adjustmentThreshold={params.adjustmentThreshold} />
+            <PathDependencyChart
+              factor={params.factor}
+              direction={params.direction}
+              adjustmentThreshold={params.adjustmentThreshold}
+              impliedVolPct={params.impliedVol}
+              riskFreePct={params.riskFreePct}
+              timeHorizonDays={params.maturityDays}
+            />
           </div>
         )}
 
