@@ -12,6 +12,11 @@ async function postJson<T>(path: string, body: any): Promise<T> {
   return await res.json()
 }
 
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`)
+  return await res.json()
+}
+
 export function fetchSummary(params: any) {
   return postJson('/api/summary', params)
 }
@@ -22,4 +27,29 @@ export function fetchMonteCarlo(params: any) {
 
 export function fetchPayoffSurface(params: any) {
   return postJson('/api/payoff-surface', params)
+}
+
+export interface Asset {
+  id: number
+  name: string
+  currency: string
+  currentPrice: number
+}
+
+export interface AssetPredictions {
+  assetId: number
+  name: string
+  currency: string
+  currentPrice: number | null
+  predictedVolatility: number | null
+  forecastPeriod: number
+  quantileReturns: Record<number, number>
+}
+
+export function fetchAssets(assetClass: number = 2): Promise<{ assets: Asset[] }> {
+  return getJson(`/api/assets?asset_class=${assetClass}`)
+}
+
+export function fetchAssetPredictions(assetId: number, forecastPeriod: number): Promise<AssetPredictions> {
+  return postJson('/api/asset-predictions', { assetId, forecastPeriod })
 }

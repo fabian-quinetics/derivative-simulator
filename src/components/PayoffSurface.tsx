@@ -19,6 +19,32 @@ interface Props {
   driftPct: number
   riskFreePct: number
   maturityDays: number
+  quantileReturns?: Record<number, number>
+  forecastPeriod?: number
+}
+
+function calculateQuantilePayoff(
+  direction: Direction,
+  currentPrice: number,
+  strikePrice: number,
+  premium: number,
+  underlyingReturn: number
+): number {
+  const finalPrice = currentPrice * (1 + underlyingReturn / 100)
+  
+  let intrinsic = 0
+  if (direction === 'call') {
+    intrinsic = Math.max(0, finalPrice - strikePrice)
+  } else {
+    intrinsic = Math.max(0, strikePrice - finalPrice)
+  }
+  
+  if (premium <= 0 || isNaN(premium)) {
+    return underlyingReturn
+  }
+  
+  const pnl = intrinsic - premium
+  return (pnl / premium) * 100
 }
 
 export default function PayoffSurface(props: Props) {
@@ -26,7 +52,14 @@ export default function PayoffSurface(props: Props) {
   const [grid, setGrid] = useState<any>({ rows: [], min: 0, max: 0 })
   const [loading, setLoading] = useState(true)
 
+  const hasQuantiles = props.quantileReturns && Object.keys(props.quantileReturns).length > 0
+
   useEffect(() => {
+    if (hasQuantiles) {
+      setLoading(false)
+      return
+    }
+    
     let cancelled = false
     setLoading(true)
     fetchPayoffSurface(props).then((r) => {
@@ -52,18 +85,16 @@ export default function PayoffSurface(props: Props) {
     props.driftPct,
     props.riskFreePct,
     props.maturityDays,
+    hasQuantiles,
   ])
 
   const colorFor = (v: number) => {
-    const maxAbs = Math.max(Math.abs(grid.min ?? 0), Math.abs(grid.max ?? 0)) || 1
+    const maxAbs = 100
     const t = Math.min(1, Math.abs(v) / maxAbs)
     const hue = v >= 0 ? 120 : 0
     const light = 22 + 28 * t
     return `hsl(${hue}, 70%, ${light}%)`
   }
-
-  const deltas = (grid.deltas?.length ? grid.deltas : [-20, -10, 0, 10, 20]) as number[]
-  const horizons = (grid.horizons?.length ? grid.horizons : [0.25, 0.5, 0.75, 1].map(f => Math.max(1, Math.round(Math.max(1, Math.round(props.maturityDays)) * f)))) as number[]
 
   if (loading) {
     return (
@@ -73,6 +104,69 @@ export default function PayoffSurface(props: Props) {
       </div>
     )
   }
+
+  if (hasQuantiles && props.quantileReturns) {
+    const quantiles = [10, 20, 30, 40, 50, 60, 70, 80, 90].filter(
+      q => props.quantileReturns![q] !== undefined
+    )
+
+    const quantileData = quantiles.map(q => {
+      const underlyingReturn = props.quantileReturns![q]
+      const payoff = calculateQuantilePayoff(
+        props.direction,
+        props.currentPrice,
+        props.strikePrice,
+        props.premium,
+        underlyingReturn
+      )
+      return { quantile: q, underlyingReturn, payoff }
+    })
+
+    return (
+      <div className="mc-container">
+        <div className="heatmap">
+          <div className="heat-title">
+            <div>{t('heatmap.quantileTitle', 'ML Quantile Payoffs')} ({props.forecastPeriod} {t('heatmap.days')})</div>
+            <div className="heat-subtitle">{t('heatmap.unit')}</div>
+          </div>
+
+          <div className="quantile-payoff-table">
+            <div className="qp-header-row">
+              <div className="qp-header">{t('heatmap.quantile', 'Quantile')}</div>
+              <div className="qp-header">{t('heatmap.underlyingReturn', 'Underlying Return')}</div>
+              <div className="qp-header">{t('heatmap.productPayoff', 'Product Payoff')}</div>
+            </div>
+            {quantileData.map(({ quantile, underlyingReturn, payoff }) => (
+              <div 
+                key={quantile} 
+                className={`qp-row ${quantile < 50 ? 'bearish' : quantile > 50 ? 'bullish' : 'neutral'}`}
+              >
+                <div className="qp-cell qp-quantile">Q{quantile}</div>
+                <div className="qp-cell qp-return">
+                  {underlyingReturn >= 0 ? '+' : ''}{underlyingReturn.toFixed(1)}%
+                </div>
+                <div 
+                  className="qp-cell qp-payoff"
+                  style={{ background: colorFor(payoff) }}
+                >
+                  {payoff >= 0 ? '+' : ''}{payoff.toFixed(1)}%
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="quantile-legend">
+            <span className="legend-item bearish">Q10-Q40: {t('heatmap.bearish', 'Bearish')}</span>
+            <span className="legend-item neutral">Q50: {t('heatmap.median', 'Median')}</span>
+            <span className="legend-item bullish">Q60-Q90: {t('heatmap.bullish', 'Bullish')}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const deltas = (grid.deltas?.length ? grid.deltas : [-20, -10, 0, 10, 20]) as number[]
+  const horizons = (grid.horizons?.length ? grid.horizons : [0.25, 0.5, 0.75, 1].map(f => Math.max(1, Math.round(Math.max(1, Math.round(props.maturityDays)) * f)))) as number[]
 
   return (
     <div className="mc-container">

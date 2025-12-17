@@ -715,3 +715,307 @@ main {
   opacity: 1;
   color: var(--accent-gold);
 }
+
+.asset-selection {
+  margin-bottom: 1rem;
+}
+
+.asset-search {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.asset-dropdown {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.asset-dropdown:focus,
+.asset-search:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+.forecast-period-selection {
+  margin-bottom: 1rem;
+}
+
+.forecast-period-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.forecast-period-toggle .toggle-btn {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.predictions-display {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.prediction-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.prediction-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.prediction-value {
+  color: var(--accent-gold);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.quantile-predictions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.quantile-grid {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.quantile-item {
+  flex: 1;
+  min-width: 50px;
+  text-align: center;
+  padding: 0.4rem;
+  border-radius: 6px;
+  background: var(--bg-primary);
+}
+
+.quantile-item.bearish {
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.quantile-item.bullish {
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.quantile-item.neutral {
+  border: 1px solid var(--border-color);
+}
+
+.q-label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.q-value {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.quantile-item.bearish .q-value {
+  color: var(--accent-put);
+}
+
+.quantile-item.bullish .q-value {
+  color: var(--accent-call);
+}
+
+.quantile-item.neutral .q-value {
+  color: var(--text-primary);
+}
+
+.quantile-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+}
+
+.legend-item {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.legend-item.bearish {
+  color: var(--accent-put);
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.legend-item.neutral {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.legend-item.bullish {
+  color: var(--accent-call);
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.quantile-payoff-table {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.qp-header-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.qp-header {
+  padding: 0.75rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.qp-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1.5fr;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.qp-row:last-child {
+  border-bottom: none;
+}
+
+.qp-row.bearish {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.qp-row.bullish {
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.qp-row.neutral {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.qp-cell {
+  padding: 0.6rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.qp-quantile {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.qp-return {
+  font-family: 'Consolas', monospace;
+}
+
+.qp-row.bearish .qp-return {
+  color: var(--accent-put);
+}
+
+.qp-row.bullish .qp-return {
+  color: var(--accent-call);
+}
+
+.qp-payoff {
+  font-weight: 600;
+  font-family: 'Consolas', monospace;
+  border-radius: 4px;
+  margin: 0.2rem;
+}
+
+.scenario-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.mode-btn:hover {
+  border-color: var(--accent-gold);
+  color: var(--text-primary);
+}
+
+.mode-btn.active {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.quantile-scenario-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.quantile-btn {
+  min-width: auto;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+.quantile-btn.bearish {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.quantile-btn.bearish.active {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: var(--accent-put);
+  color: var(--accent-put);
+}
+
+.quantile-btn.bullish {
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.quantile-btn.bullish.active {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: var(--accent-call);
+  color: var(--accent-call);
+}
+
+.quantile-btn.neutral {
+  border-color: var(--border-color);
+}
+
+.quantile-btn.neutral.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}

@@ -34,7 +34,11 @@
     "ratioSimple": "Subscription Ratio",
     "knockoutBarrier": "Knock-Out Barrier (EUR)",
     "factor": "Leverage Factor",
-    "adjustmentThreshold": "Adjustment Threshold (% per day)"
+    "adjustmentThreshold": "Adjustment Threshold (% per day)",
+    "asset": "Asset",
+    "searchAsset": "Search assets...",
+    "selectAsset": "Select asset...",
+    "forecastPeriod": "Forecast Period"
   },
   "metrics": {
     "title": "Key Figures",
@@ -67,7 +71,12 @@
     "returnDistribution": "Return Distribution",
     "returnDistributionMC": "Return Distribution (Monte Carlo)",
     "returnHeatmap": "Return Heatmap",
-    "pathDependency": "Path Dependency Simulation"
+    "pathDependency": "Path Dependency Simulation",
+    "quantilePayoffs": "Quantile Payoff Scenarios"
+  },
+  "predictions": {
+    "predictedVol": "Predicted Volatility",
+    "quantileReturns": "Return Scenarios"
   },
   "monteCarlo": {
     "maxLoss": "Max. Loss",
@@ -82,7 +91,13 @@
     "title": "Expected Return (Mean)",
     "unit": "% Return",
     "underlyingReturn": "Underlying Return",
-    "days": "Days"
+    "productPayoff": "Product Payoff",
+    "days": "Days",
+    "quantileTitle": "ML Quantile Payoffs",
+    "quantile": "Quantile",
+    "bearish": "Bearish",
+    "median": "Median",
+    "bullish": "Bullish"
   },
   "pathDependency": {
     "scenario": "Scenario",
@@ -171,6 +186,12 @@
     "maxLoss": "The maximum loss for buying options is limited to the premium paid. You can never lose more than your initial investment, unlike short positions.",
     "koDistance": "The distance to the knock-out barrier in percent. The smaller the distance, the higher the risk of knock-out. Watch this closely as markets can move quickly.",
     "value": "The fair value of the Knock-Out certificate, calculated using closed-form barrier option pricing (Rubinstein-Reiner). It includes both intrinsic value and time value, discounted by the probability of knock-out. This is more accurate than simple intrinsic value.",
-    "onePlus": "Shows the expected percentage change of the certificate when the underlying moves by +1%. For a 3x Long factor certificate, this would be +3%."
+    "onePlus": "Shows the expected percentage change of the certificate when the underlying moves by +1%. For a 3x Long factor certificate, this would be +3%.",
+    "asset": "Select an asset to auto-fill price and see ML predictions",
+    "forecastPeriod": "The time horizon for ML predictions"
+  },
+  "pathDependency": {
+    "quantileScenario": "ML Scenario",
+    "manualScenario": "Manual Scenario"
   }
 }

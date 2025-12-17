@@ -9,16 +9,42 @@ interface PathDependencyChartProps {
   impliedVolPct: number
   riskFreePct: number
   timeHorizonDays: number
+  quantileReturns?: Record<number, number>
+  forecastPeriod?: number
 }
 
-export default function PathDependencyChart({ factor, direction, adjustmentThreshold, impliedVolPct, riskFreePct, timeHorizonDays }: PathDependencyChartProps) {
-  const { t } = useTranslation()
-  const [scenario, setScenario] = useState<string>('volatile_sideways')
+type ScenarioMode = 'manual' | 'quantile'
 
-  const scenarioLabels: Record<string, string> = {
+export default function PathDependencyChart({ 
+  factor, 
+  direction, 
+  adjustmentThreshold, 
+  impliedVolPct, 
+  riskFreePct, 
+  timeHorizonDays,
+  quantileReturns,
+  forecastPeriod
+}: PathDependencyChartProps) {
+  const { t } = useTranslation()
+  const [scenarioMode, setScenarioMode] = useState<ScenarioMode>(quantileReturns ? 'quantile' : 'manual')
+  const [manualScenario, setManualScenario] = useState<string>('volatile_sideways')
+  const [selectedQuantile, setSelectedQuantile] = useState<number>(50)
+
+  const hasQuantiles = quantileReturns && Object.keys(quantileReturns).length > 0
+  const availableQuantiles = hasQuantiles 
+    ? [10, 20, 30, 40, 50, 60, 70, 80, 90].filter(q => quantileReturns![q] !== undefined)
+    : []
+
+  const manualScenarioLabels: Record<string, string> = {
     volatile_falling: t('pathDependency.volatileFalling'),
     volatile_sideways: t('pathDependency.volatileSideways'),
     volatile_rising: t('pathDependency.volatileRising')
+  }
+
+  const getQuantileLabel = (q: number) => {
+    if (!quantileReturns) return `Q${q}`
+    const ret = quantileReturns[q]
+    return `Q${q} (${ret >= 0 ? '+' : ''}${ret.toFixed(1)}%)`
   }
 
   const basePath = useMemo(() => {
@@ -44,7 +70,21 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
 
     const days = Math.min(250, Math.max(20, Math.round(timeHorizonDays || 60)))
     const annVolPct = Math.max(0, impliedVolPct || 0)
-    const rng = mulberry32(hash(`${scenario}|${annVolPct}|${days}`))
+    
+    let targetTotalReturn = 0
+    let seedString = ''
+    
+    if (scenarioMode === 'quantile' && hasQuantiles && quantileReturns) {
+      targetTotalReturn = quantileReturns[selectedQuantile] / 100
+      seedString = `quantile|${selectedQuantile}|${annVolPct}|${days}`
+    } else {
+      if (manualScenario === 'volatile_rising') targetTotalReturn = 0.15
+      else if (manualScenario === 'volatile_falling') targetTotalReturn = -0.15
+      else targetTotalReturn = 0
+      seedString = `${manualScenario}|${annVolPct}|${days}`
+    }
+    
+    const rng = mulberry32(hash(seedString))
 
     const normal = () => {
       const u1 = Math.max(1e-12, rng())
@@ -54,11 +94,6 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
 
     const shocks: number[] = []
     for (let day = 0; day < days; day++) shocks.push(normal() * (annVolPct / 100) / Math.sqrt(252))
-
-    let targetTotalReturn = 0
-    if (scenario === 'volatile_rising') targetTotalReturn = 0.15
-    else if (scenario === 'volatile_falling') targetTotalReturn = -0.15
-    else targetTotalReturn = (rng() - 0.5) * 0.10
 
     const targetLog = Math.log(1 + targetTotalReturn)
     const sumShocks = shocks.reduce((a, b) => a + b, 0)
@@ -78,7 +113,7 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
       prices.push(baseValue)
     }
     return { prices, dailyChanges, days }
-  }, [scenario, impliedVolPct, timeHorizonDays])
+  }, [scenarioMode, manualScenario, selectedQuantile, impliedVolPct, timeHorizonDays, quantileReturns, hasQuantiles])
 
   const data = useMemo(() => {
     const sigma = Math.max(0, impliedVolPct) / 100
@@ -168,20 +203,54 @@ export default function PathDependencyChart({ factor, direction, adjustmentThres
   return (
     <div className="path-dependency">
       <div className="path-controls">
-        <div className="scenario-select">
-          <label>{t('pathDependency.scenario')}</label>
-          <div className="scenario-buttons">
-            {Object.keys(scenarioLabels).map(s => (
-              <button
-                key={s}
-                className={`scenario-btn ${scenario === s ? 'active' : ''}`}
-                onClick={() => setScenario(s)}
-              >
-                {scenarioLabels[s]}
-              </button>
-            ))}
+        {hasQuantiles && (
+          <div className="scenario-mode-toggle">
+            <button 
+              className={`mode-btn ${scenarioMode === 'quantile' ? 'active' : ''}`}
+              onClick={() => setScenarioMode('quantile')}
+            >
+              {t('pathDependency.quantileScenario', 'ML Scenario')}
+            </button>
+            <button 
+              className={`mode-btn ${scenarioMode === 'manual' ? 'active' : ''}`}
+              onClick={() => setScenarioMode('manual')}
+            >
+              {t('pathDependency.manualScenario', 'Manual Scenario')}
+            </button>
           </div>
-        </div>
+        )}
+
+        {scenarioMode === 'quantile' && hasQuantiles ? (
+          <div className="scenario-select">
+            <label>{t('pathDependency.scenario')}</label>
+            <div className="quantile-scenario-buttons">
+              {availableQuantiles.map(q => (
+                <button
+                  key={q}
+                  className={`scenario-btn quantile-btn ${selectedQuantile === q ? 'active' : ''} ${q < 50 ? 'bearish' : q > 50 ? 'bullish' : 'neutral'}`}
+                  onClick={() => setSelectedQuantile(q)}
+                >
+                  {getQuantileLabel(q)}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="scenario-select">
+            <label>{t('pathDependency.scenario')}</label>
+            <div className="scenario-buttons">
+              {Object.keys(manualScenarioLabels).map(s => (
+                <button
+                  key={s}
+                  className={`scenario-btn ${manualScenario === s ? 'active' : ''}`}
+                  onClick={() => setManualScenario(s)}
+                >
+                  {manualScenarioLabels[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="path-chart">

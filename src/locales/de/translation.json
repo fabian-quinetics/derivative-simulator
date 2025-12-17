@@ -34,7 +34,11 @@
     "ratioSimple": "Bezugsverhältnis",
     "knockoutBarrier": "Knock-Out Barriere (EUR)",
     "factor": "Hebelfaktor",
-    "adjustmentThreshold": "Anpassungsschwelle (% pro Tag)"
+    "adjustmentThreshold": "Anpassungsschwelle (% pro Tag)",
+    "asset": "Asset",
+    "searchAsset": "Assets suchen...",
+    "selectAsset": "Asset auswählen...",
+    "forecastPeriod": "Prognosezeitraum"
   },
   "metrics": {
     "title": "Kennzahlen",
@@ -67,7 +71,12 @@
     "returnDistribution": "Rendite-Verteilung",
     "returnDistributionMC": "Rendite-Verteilung (Monte Carlo)",
     "returnHeatmap": "Rendite-Heatmap",
-    "pathDependency": "Pfadabhängigkeit Simulation"
+    "pathDependency": "Pfadabhängigkeit Simulation",
+    "quantilePayoffs": "Quantil-Payoff-Szenarien"
+  },
+  "predictions": {
+    "predictedVol": "Prognostizierte Volatilität",
+    "quantileReturns": "Rendite-Szenarien"
   },
   "monteCarlo": {
     "maxLoss": "Max. Verlust",
@@ -82,7 +91,13 @@
     "title": "Erwartete Rendite (Mittelwert)",
     "unit": "% Rendite",
     "underlyingReturn": "Rendite Basiswert",
-    "days": "Tage"
+    "productPayoff": "Produkt-Payoff",
+    "days": "Tage",
+    "quantileTitle": "ML Quantil-Payoffs",
+    "quantile": "Quantil",
+    "bearish": "Bärisch",
+    "median": "Median",
+    "bullish": "Bullisch"
   },
   "pathDependency": {
     "scenario": "Szenario",
@@ -171,6 +186,12 @@
     "maxLoss": "Der maximale Verlust beim Kauf von Optionen ist auf die gezahlte Prämie begrenzt. Sie können nie mehr als Ihre ursprüngliche Investition verlieren, anders als bei Short-Positionen.",
     "koDistance": "Der Abstand zur Knock-Out-Barriere in Prozent. Je kleiner der Abstand, desto höher das Risiko eines Knock-Outs. Beobachten Sie dies genau, da Märkte sich schnell bewegen können.",
     "value": "Der faire Wert des Knock-Out-Zertifikats, berechnet mit der geschlossenen Barrier-Options-Formel (Rubinstein-Reiner). Er enthält sowohl inneren Wert als auch Zeitwert, diskontiert um die Knock-Out-Wahrscheinlichkeit. Dies ist genauer als nur der innere Wert.",
-    "onePlus": "Zeigt die erwartete prozentuale Veränderung des Zertifikats, wenn sich der Basiswert um +1% bewegt. Bei einem 3x Long Faktor-Zertifikat wären das +3%."
+    "onePlus": "Zeigt die erwartete prozentuale Veränderung des Zertifikats, wenn sich der Basiswert um +1% bewegt. Bei einem 3x Long Faktor-Zertifikat wären das +3%.",
+    "asset": "Wählen Sie ein Asset, um den Preis automatisch auszufüllen und ML-Prognosen zu sehen",
+    "forecastPeriod": "Der Zeithorizont für ML-Prognosen"
+  },
+  "pathDependency": {
+    "quantileScenario": "ML-Szenario",
+    "manualScenario": "Manuelles Szenario"
   }
 }
