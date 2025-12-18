@@ -29,10 +29,12 @@ interface WarrantParams {
 
 type BsGreeks = { delta: number; gamma: number; vega: number; theta: number }
 
-const FORECAST_PERIODS = [30, 60, 100]
+const FORECAST_PERIODS_REAL = [60, 100]
+type DataMode = 'simulation' | 'real'
 
 export default function WarrantCalculator() {
   const { t } = useTranslation()
+  const [dataMode, setDataMode] = useState<DataMode>('simulation')
   const [params, setParams] = useState<WarrantParams>({
     productType: 'warrant',
     direction: 'call',
@@ -68,26 +70,53 @@ export default function WarrantCalculator() {
   const [modalInfo, setModalInfo] = useState<{ title: string; content: string } | null>(null)
 
   useEffect(() => {
+    if (dataMode !== 'real') return
+    if (assets.length > 0) return
     setAssetsLoading(true)
     fetchAssets(2).then(res => {
       setAssets(res.assets)
       setAssetsLoading(false)
     }).catch(() => setAssetsLoading(false))
-  }, [])
+  }, [dataMode, assets.length])
+
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   useEffect(() => {
+    if (dataMode !== 'real') return
     if (selectedAssetId) {
       fetchAssetPredictions(selectedAssetId, forecastPeriod).then(predictions => {
         setAssetPredictions(predictions)
         if (predictions.currentPrice) {
-          setParams(prev => ({ ...prev, currentPrice: predictions.currentPrice!, maturityDays: forecastPeriod }))
+          const price = predictions.currentPrice!
+          setParams(prev => ({ 
+            ...prev, 
+            currentPrice: price, 
+            strikePrice: price,
+            knockoutBarrier: Math.round(price * 0.9),
+            maturityDays: forecastPeriod 
+          }))
           setMaturityDraft(forecastPeriod)
         }
       }).catch(() => setAssetPredictions(null))
     } else {
       setAssetPredictions(null)
     }
-  }, [selectedAssetId, forecastPeriod])
+  }, [dataMode, selectedAssetId, forecastPeriod])
+
+  useEffect(() => {
+    if (dataMode === 'real') {
+      setSelectedAssetId(null)
+      setAssetPredictions(null)
+      setAssetSearch('')
+      setForecastPeriod(60)
+      setParams(prev => ({ ...prev, maturityDays: 60 }))
+      setMaturityDraft(60)
+    } else {
+      setSelectedAssetId(null)
+      setAssetPredictions(null)
+      setAssetSearch('')
+    }
+  }, [dataMode])
 
   const handleForecastPeriodChange = (fp: number) => {
     setForecastPeriod(fp)
@@ -178,76 +207,115 @@ export default function WarrantCalculator() {
       <div className="input-section">
         <h2>{t('product.title')}</h2>
 
-        <div className="input-group asset-selection">
+        <div className="input-group data-mode-selection">
           <label className="label-with-info">
-            {t('inputs.asset', 'Asset')}
-            <button className="label-info-btn" onClick={() => showInfo(t('inputs.asset', 'Asset'), t('info.asset', 'Select an asset to auto-fill price and see ML predictions'))}><InfoIcon size={12} /></button>
-          </label>
-          <input
-            type="text"
-            placeholder={t('inputs.searchAsset', 'Search assets...')}
-            value={assetSearch}
-            onChange={e => setAssetSearch(e.target.value)}
-            className="asset-search"
-          />
-          <select
-            value={selectedAssetId || ''}
-            onChange={e => setSelectedAssetId(e.target.value ? parseInt(e.target.value) : null)}
-            className="asset-dropdown"
-          >
-            <option value="">{assetsLoading ? t('loading', 'Loading...') : t('inputs.selectAsset', 'Select asset...')}</option>
-            {filteredAssets.map(a => (
-              <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="input-group forecast-period-selection">
-          <label className="label-with-info">
-            {t('inputs.forecastPeriod', 'Forecast Period')}
-            <button className="label-info-btn" onClick={() => showInfo(t('inputs.forecastPeriod', 'Forecast Period'), t('info.forecastPeriod', 'The time horizon for ML predictions'))}><InfoIcon size={12} /></button>
+            {t('inputs.dataMode', 'Data mode')}
           </label>
           <div className="forecast-period-toggle">
-            {FORECAST_PERIODS.map(fp => (
-              <button
-                key={fp}
-                className={`toggle-btn ${forecastPeriod === fp ? 'active' : ''}`}
-                onClick={() => handleForecastPeriodChange(fp)}
-              >
-                {fp}d
-              </button>
-            ))}
+            <button
+              className={`toggle-btn ${dataMode === 'simulation' ? 'active' : ''}`}
+              onClick={() => setDataMode('simulation')}
+            >
+              {t('inputs.simulation', 'Simulation')}
+            </button>
+            <button
+              className={`toggle-btn ${dataMode === 'real' ? 'active' : ''}`}
+              onClick={() => setDataMode('real')}
+            >
+              {t('inputs.realAssets', 'Real assets')}
+            </button>
           </div>
         </div>
 
-        {assetPredictions && (
-          <div className="predictions-display">
-            <div className="prediction-item">
-              <span className="prediction-label">{t('predictions.predictedVol', 'Predicted Volatility')}</span>
-              <span className="prediction-value">
-                {assetPredictions.predictedVolatility !== null 
-                  ? `${assetPredictions.predictedVolatility.toFixed(1)}%` 
-                  : '-'}
-              </span>
+        {dataMode === 'real' && (
+          <>
+            <div className="input-group asset-selection">
+              <label className="label-with-info">
+                {t('inputs.asset', 'Asset')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.asset', 'Asset'), t('info.asset', 'Select an asset to auto-fill price and see ML predictions'))}><InfoIcon size={12} /></button>
+              </label>
+              <div className="searchable-dropdown">
+                <input
+                  type="text"
+                  placeholder={assetsLoading ? t('loading', 'Loading...') : t('inputs.searchAsset', 'Search assets...')}
+                  value={assetSearch}
+                  onChange={e => {
+                    setAssetSearch(e.target.value)
+                    setDropdownOpen(true)
+                    if (!e.target.value) setSelectedAssetId(null)
+                  }}
+                  onFocus={() => setDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
+                  className="asset-search"
+                />
+                {dropdownOpen && filteredAssets.length > 0 && (
+                  <div className="dropdown-list">
+                    {filteredAssets.map(a => (
+                      <div
+                        key={a.id}
+                        className={`dropdown-item ${selectedAssetId === a.id ? 'selected' : ''}`}
+                        onMouseDown={() => {
+                          setSelectedAssetId(a.id)
+                          setAssetSearch(`${a.name} (${a.currency})`)
+                          setDropdownOpen(false)
+                        }}
+                      >
+                        {a.name} ({a.currency})
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            {Object.keys(assetPredictions.quantileReturns).length > 0 && (
-              <div className="quantile-predictions">
-                <span className="prediction-label">{t('predictions.quantileReturns', 'Return Scenarios')}</span>
-                <div className="quantile-grid">
-                  {[10, 30, 50, 70, 90].map(q => (
-                    <div key={q} className={`quantile-item ${q < 50 ? 'bearish' : q > 50 ? 'bullish' : 'neutral'}`}>
-                      <span className="q-label">Q{q}</span>
-                      <span className="q-value">
-                        {assetPredictions.quantileReturns[q] !== undefined 
-                          ? `${assetPredictions.quantileReturns[q] >= 0 ? '+' : ''}${assetPredictions.quantileReturns[q].toFixed(1)}%`
-                          : '-'}
-                      </span>
-                    </div>
-                  ))}
+
+            <div className="input-group forecast-period-selection">
+              <label className="label-with-info">
+                {t('inputs.forecastPeriod', 'Forecast Period')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.forecastPeriod', 'Forecast Period'), t('info.forecastPeriod', 'The time horizon for ML predictions'))}><InfoIcon size={12} /></button>
+              </label>
+              <div className="forecast-period-toggle">
+                {FORECAST_PERIODS_REAL.map(fp => (
+                  <button
+                    key={fp}
+                    className={`toggle-btn ${forecastPeriod === fp ? 'active' : ''}`}
+                    onClick={() => handleForecastPeriodChange(fp)}
+                  >
+                    {fp}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {assetPredictions && (
+              <div className="predictions-display">
+                <div className="prediction-item">
+                  <span className="prediction-label">{t('predictions.predictedVol', 'Predicted Volatility')}</span>
+                  <span className="prediction-value">
+                    {assetPredictions.predictedVolatility !== null 
+                      ? `${assetPredictions.predictedVolatility.toFixed(1)}%` 
+                      : '-'}
+                  </span>
                 </div>
+                {Object.keys(assetPredictions.quantileReturns).length > 0 && (
+                  <div className="quantile-predictions">
+                    <span className="prediction-label">{t('predictions.quantileReturns', 'Return Scenarios')}</span>
+                    <div className="quantile-grid">
+                      {[10, 30, 50, 70, 90].map(q => (
+                        <div key={q} className={`quantile-item ${q < 50 ? 'bearish' : q > 50 ? 'bullish' : 'neutral'}`}>
+                          <span className="q-label">Q{q}</span>
+                          <span className="q-value">
+                            {assetPredictions.quantileReturns[q] !== undefined 
+                              ? `${assetPredictions.quantileReturns[q] >= 0 ? '+' : ''}${assetPredictions.quantileReturns[q].toFixed(1)}%`
+                              : '-'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </>
         )}
         
         <div className="product-select">
@@ -295,37 +363,53 @@ export default function WarrantCalculator() {
               type="number"
               value={params.currentPrice}
               onChange={e => updateParam('currentPrice', parseFloat(e.target.value) || 0)}
+              disabled={dataMode === 'real' && selectedAssetId !== null}
             />
-            <input
-              type="range"
-              min="10"
-              max="200"
-              value={params.currentPrice}
-              onChange={e => updateParam('currentPrice', parseFloat(e.target.value))}
-            />
+            {dataMode === 'simulation' && (
+              <input
+                type="range"
+                min="10"
+                max="200"
+                value={params.currentPrice}
+                onChange={e => updateParam('currentPrice', parseFloat(e.target.value))}
+              />
+            )}
           </div>
         )}
 
-        {params.productType !== 'factor' && (
-          <div className="input-group">
-            <label className="label-with-info">
-              {params.productType === 'knockout' ? t('inputs.strikeKnockout') : t('inputs.strikePrice')}
-              <button className="label-info-btn" onClick={() => showInfo(t('inputs.strikePrice'), t('info.strikePrice'))}><InfoIcon size={12} /></button>
-            </label>
-            <input
-              type="number"
-              value={params.strikePrice}
-              onChange={e => updateParam('strikePrice', parseFloat(e.target.value) || 0)}
-            />
-            <input
-              type="range"
-              min="10"
-              max="200"
-              value={params.strikePrice}
-              onChange={e => updateParam('strikePrice', parseFloat(e.target.value))}
-            />
-          </div>
-        )}
+        {params.productType !== 'factor' && (() => {
+          const basePrice = params.currentPrice || 100
+          const sliderMin = Math.round(basePrice * 0.5)
+          const sliderMax = Math.round(basePrice * 1.5)
+          return (
+            <div className="input-group">
+              <label className="label-with-info">
+                {params.productType === 'knockout' ? t('inputs.strikeKnockout') : t('inputs.strikePrice')}
+                <button className="label-info-btn" onClick={() => showInfo(t('inputs.strikePrice'), t('info.strikePrice'))}><InfoIcon size={12} /></button>
+              </label>
+              <input
+                type="number"
+                value={params.strikePrice}
+                onChange={e => updateParam('strikePrice', parseFloat(e.target.value) || 0)}
+              />
+              <input
+                type="range"
+                min={sliderMin}
+                max={sliderMax}
+                step={basePrice > 500 ? 5 : 1}
+                value={params.strikePrice}
+                onChange={e => updateParam('strikePrice', parseFloat(e.target.value))}
+              />
+              {dataMode === 'real' && (
+                <div className="slider-labels">
+                  <span>{sliderMin}</span>
+                  <span className="current-marker">▲ {basePrice}</span>
+                  <span>{sliderMax}</span>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {params.productType !== 'factor' && (
           <>
@@ -501,7 +585,11 @@ export default function WarrantCalculator() {
           </div>
         )}
 
-        {params.productType === 'knockout' && (
+        {params.productType === 'knockout' && (() => {
+          const basePrice = params.currentPrice || 100
+          const koMin = Math.round(basePrice * 0.5)
+          const koMax = Math.round(basePrice * 1.2)
+          return (
           <>
             <div className="input-group">
               <label className="label-with-info">
@@ -515,11 +603,19 @@ export default function WarrantCalculator() {
               />
               <input
                 type="range"
-                min="10"
-                max="200"
+                min={koMin}
+                max={koMax}
+                step={basePrice > 500 ? 5 : 1}
                 value={params.knockoutBarrier}
                 onChange={e => updateParam('knockoutBarrier', parseFloat(e.target.value))}
               />
+              {dataMode === 'real' && (
+                <div className="slider-labels">
+                  <span>{koMin}</span>
+                  <span className="current-marker">▲ {basePrice}</span>
+                  <span>{koMax}</span>
+                </div>
+              )}
             </div>
             <div className="input-group">
               <label className="label-with-info">
@@ -542,7 +638,8 @@ export default function WarrantCalculator() {
               />
             </div>
           </>
-        )}
+          )
+        })()}
 
         {params.productType === 'factor' && (
           <div className="input-group">
@@ -810,7 +907,7 @@ export default function WarrantCalculator() {
           </div>
         )}
 
-        {params.productType !== 'factor' && (
+        {params.productType !== 'factor' && dataMode !== 'real' && (
           <div className="chart-container mc-block">
             <h2>{params.productType === 'warrant' ? t('charts.returnDistribution') : t('charts.returnDistributionMC')}</h2>
             <MonteCarloSimulator

@@ -325,6 +325,12 @@ main {
   border-color: var(--text-secondary);
 }
 
+.toggle-btn.active {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: #000;
+}
+
 .toggle-btn.active.call {
   background: var(--accent-call);
   border-color: var(--accent-call);
@@ -746,6 +752,55 @@ main {
 .asset-search:focus {
   outline: none;
   border-color: var(--accent-gold);
+}
+
+.searchable-dropdown {
+  position: relative;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #1a1a2e;
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.dropdown-item {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: #1a1a2e;
+}
+
+.dropdown-item:hover {
+  background: #2a2a4e;
+}
+
+.dropdown-item.selected {
+  background: #3a3a5e;
+  color: var(--accent-gold);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.slider-labels .current-marker {
+  color: var(--accent-gold);
+  font-weight: 600;
 }
 
 .forecast-period-selection {
