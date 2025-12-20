@@ -31,9 +31,22 @@ export default function PayoffSurface(props: Props) {
 
   const hasQuantiles = props.quantileReturns && Object.keys(props.quantileReturns).length > 0
 
+  const requestKey = JSON.stringify({
+    productType: props.productType,
+    direction: props.direction,
+    currentPrice: props.currentPrice,
+    strikePrice: props.strikePrice,
+    premium: props.premium,
+    knockoutBarrier: props.knockoutBarrier,
+    ratio: props.ratio,
+    quantileReturns: props.quantileReturns,
+    forecastPeriod: props.forecastPeriod,
+  })
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setQuantileData([])
     
     if (hasQuantiles) {
       fetchQuantilePayoff({
@@ -66,24 +79,7 @@ export default function PayoffSurface(props: Props) {
     }
     
     return () => { cancelled = true }
-  }, [
-    props.productType,
-    props.direction,
-    props.currentPrice,
-    props.strikePrice,
-    props.premium,
-    props.ratio,
-    props.knockoutBarrier,
-    props.factor,
-    props.adjustmentThreshold,
-    props.impliedVol,
-    props.driftPct,
-    props.riskFreePct,
-    props.maturityDays,
-    props.quantileReturns,
-    props.forecastPeriod,
-    hasQuantiles,
-  ])
+  }, [requestKey, hasQuantiles])
 
   const colorFor = (v: number) => {
     const maxAbs = 100
