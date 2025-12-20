@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts'
+import { fetchPathDependency } from '../api'
+import type { PathDependencyResult } from '../api'
 
 interface PathDependencyChartProps {
   factor: number
@@ -13,8 +15,6 @@ interface PathDependencyChartProps {
   forecastPeriod?: number
 }
 
-type ScenarioMode = 'manual' | 'quantile'
-
 export default function PathDependencyChart({ 
   factor, 
   direction, 
@@ -23,206 +23,72 @@ export default function PathDependencyChart({
   riskFreePct, 
   timeHorizonDays,
   quantileReturns,
-  forecastPeriod
 }: PathDependencyChartProps) {
   const { t } = useTranslation()
-  const [scenarioMode, setScenarioMode] = useState<ScenarioMode>(quantileReturns ? 'quantile' : 'manual')
   const [manualScenario, setManualScenario] = useState<string>('volatile_sideways')
   const [selectedQuantile, setSelectedQuantile] = useState<number>(50)
+  const [result, setResult] = useState<PathDependencyResult | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const hasQuantiles = quantileReturns && Object.keys(quantileReturns).length > 0
   const availableQuantiles = hasQuantiles 
-    ? [10, 20, 30, 40, 50, 60, 70, 80, 90].filter(q => quantileReturns![q] !== undefined)
+    ? [10, 30, 50, 70, 90].filter(q => quantileReturns![q] !== undefined)
     : []
 
   const manualScenarioLabels: Record<string, string> = {
-    volatile_falling: t('pathDependency.volatileFalling'),
-    volatile_sideways: t('pathDependency.volatileSideways'),
-    volatile_rising: t('pathDependency.volatileRising')
+    volatile_falling: t('pathDependency.manualVolatileDown'),
+    volatile_sideways: t('pathDependency.manualSideways'),
+    volatile_rising: t('pathDependency.manualVolatileUp')
   }
 
   const getQuantileLabel = (q: number) => {
-    if (!quantileReturns) return `Q${q}`
+    if (!quantileReturns) return ''
     const ret = quantileReturns[q]
-    return `Q${q} (${ret >= 0 ? '+' : ''}${ret.toFixed(1)}%)`
+    return t('pathDependency.aiScenarioLabel', {
+      name: t(`pathDependency.aiQ${q}`),
+      ret: `${ret >= 0 ? '+' : ''}${ret.toFixed(1)}%`
+    })
   }
 
-  const basePath = useMemo(() => {
-    const hash = (s: string) => {
-      let h = 2166136261
-      for (let i = 0; i < s.length; i++) {
-        h ^= s.charCodeAt(i)
-        h = Math.imul(h, 16777619)
-      }
-      return h >>> 0
-    }
-
-    const mulberry32 = (seed: number) => {
-      let a = seed >>> 0
-      return () => {
-        a = (a + 0x6D2B79F5) >>> 0
-        let t = a
-        t = Math.imul(t ^ (t >>> 15), t | 1)
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-      }
-    }
-
-    const days = Math.min(250, Math.max(20, Math.round(timeHorizonDays || 60)))
-    const annVolPct = Math.max(0, impliedVolPct || 0)
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
     
-    let targetTotalReturn = 0
-    let seedString = ''
-    
-    if (scenarioMode === 'quantile' && hasQuantiles && quantileReturns) {
-      targetTotalReturn = quantileReturns[selectedQuantile] / 100
-      seedString = `quantile|${selectedQuantile}|${annVolPct}|${days}`
-    } else {
-      if (manualScenario === 'volatile_rising') targetTotalReturn = 0.15
-      else if (manualScenario === 'volatile_falling') targetTotalReturn = -0.15
-      else targetTotalReturn = 0
-      seedString = `${manualScenario}|${annVolPct}|${days}`
-    }
-    
-    const rng = mulberry32(hash(seedString))
-
-    const normal = () => {
-      const u1 = Math.max(1e-12, rng())
-      const u2 = Math.max(1e-12, rng())
-      return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
-    }
-
-    const shocks: number[] = []
-    for (let day = 0; day < days; day++) shocks.push(normal() * (annVolPct / 100) / Math.sqrt(252))
-
-    const targetLog = Math.log(1 + targetTotalReturn)
-    const sumShocks = shocks.reduce((a, b) => a + b, 0)
-    const driftPerDay = (targetLog - sumShocks) / days
-
-    const dailyChanges: number[] = []
-    for (let day = 0; day < days; day++) {
-      const lr = driftPerDay + shocks[day]
-      const rDec = Math.exp(lr) - 1
-      dailyChanges.push(rDec * 100)
-    }
-
-    const prices: number[] = [100]
-    let baseValue = 100
-    for (let i = 0; i < dailyChanges.length; i++) {
-      baseValue = baseValue * (1 + dailyChanges[i] / 100)
-      prices.push(baseValue)
-    }
-    return { prices, dailyChanges, days }
-  }, [scenarioMode, manualScenario, selectedQuantile, impliedVolPct, timeHorizonDays, quantileReturns, hasQuantiles])
-
-  const data = useMemo(() => {
-    const sigma = Math.max(0, impliedVolPct) / 100
-    const r = (riskFreePct || 0) / 100
-    const strike = 100
-    const optionMaturityDays = 365
-    const maturityYears = optionMaturityDays / 365
-    const isCallOpt = direction === 'call'
-    const dirMultiplier = direction === 'call' ? 1 : -1
-
-    const erf = (x: number) => {
-      const sign = x >= 0 ? 1 : -1
-      const ax = Math.abs(x)
-      const t = 1 / (1 + 0.3275911 * ax)
-      const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-ax * ax)
-      return sign * y
-    }
-
-    const normCdf = (x: number) => 0.5 * (1 + erf(x / Math.SQRT2))
-
-    const bsPrice = (S: number, K: number, T: number, isCall: boolean) => {
-      if (T <= 0 || sigma <= 0 || S <= 0 || K <= 0) {
-        const intrinsic = isCall ? Math.max(0, S - K) : Math.max(0, K - S)
-        return intrinsic
+    fetchPathDependency({
+      factor,
+      direction,
+      adjustmentThreshold,
+      impliedVolPct,
+      riskFreePct,
+      timeHorizonDays,
+      quantileReturns,
+      selectedQuantile,
+      manualScenario,
+    }).then((res) => {
+      if (!cancelled) {
+        setResult(res)
+        setLoading(false)
       }
-      const sqrtT = Math.sqrt(T)
-      const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * sqrtT)
-      const d2 = d1 - sigma * sqrtT
-      if (isCall) return S * normCdf(d1) - K * Math.exp(-r * T) * normCdf(d2)
-      return K * Math.exp(-r * T) * normCdf(-d2) - S * normCdf(-d1)
-    }
+    }).catch(() => {
+      if (!cancelled) setLoading(false)
+    })
 
-    const s0 = basePath.prices[0] ?? 100
-    const opt0 = Math.max(0.0001, bsPrice(s0, strike, maturityYears, isCallOpt))
+    return () => { cancelled = true }
+  }, [factor, direction, adjustmentThreshold, impliedVolPct, riskFreePct, timeHorizonDays, quantileReturns, selectedQuantile, manualScenario])
 
-    const rows = []
-    let certValue = 100
-    const days = basePath.days
-    for (let day = 0; day <= days; day++) {
-      const baseValue = basePath.prices[day] ?? basePath.prices[basePath.prices.length - 1] ?? 100
-      const tRem = Math.max(0, (optionMaturityDays - day) / 365)
-      const opt = bsPrice(baseValue, strike, tRem, isCallOpt)
-
-      rows.push({
-        day,
-        base: baseValue,
-        cert: certValue,
-        opt: (opt / opt0) * 100,
-        difference: certValue - baseValue
-      })
-
-      if (day < days) {
-        const dailyChange = basePath.dailyChanges[day] ?? 0
-        const applyAdj = (dailyChangePct: number) => {
-          if (!adjustmentThreshold || adjustmentThreshold <= 0) return Math.max(0.001, 1 + (dailyChangePct / 100) * factor * dirMultiplier)
-          const thr = Math.abs(adjustmentThreshold)
-          let rem = dailyChangePct
-          let m = 1
-          for (let i = 0; i < 10; i++) {
-            const isHit = dirMultiplier > 0 ? rem <= -thr : rem >= thr
-            if (!isHit) return m * Math.max(0.001, 1 + (rem / 100) * factor * dirMultiplier)
-            const r1 = dirMultiplier > 0 ? -thr : thr
-            m *= Math.max(0.001, 1 + (r1 / 100) * factor * dirMultiplier)
-            const denom = 1 + r1 / 100
-            if (denom === 0) return m
-            rem = ((1 + rem / 100) / denom - 1) * 100
-          }
-          return m * Math.max(0.001, 1 + (rem / 100) * factor * dirMultiplier)
-        }
-        certValue = certValue * applyAdj(dailyChange)
-        if (certValue < 0.01) certValue = 0.01
-      }
-    }
-
-    return rows
-  }, [basePath, factor, direction, adjustmentThreshold, impliedVolPct, riskFreePct])
-
-  const finalBase = data[data.length - 1]?.base || 100
-  const finalCert = data[data.length - 1]?.cert || 100
-  const finalOpt = data[data.length - 1]?.opt || 100
-  const baseReturn = ((finalBase - 100) / 100) * 100
-  const certReturn = ((finalCert - 100) / 100) * 100
-  const optReturn = finalOpt - 100
-  const expectedReturn = baseReturn * factor * (direction === 'call' ? 1 : -1)
-  const volatilityDrag = certReturn - expectedReturn
+  const data = result?.data || []
+  const baseReturn = result?.baseReturn || 0
+  const certReturn = result?.certReturn || 0
+  const optReturn = result?.optReturn || 0
+  const expectedReturn = result?.expectedReturn || 0
+  const volatilityDrag = result?.volatilityDrag || 0
 
   return (
     <div className="path-dependency">
       <div className="path-controls">
-        {hasQuantiles && (
-          <div className="scenario-mode-toggle">
-            <button 
-              className={`mode-btn ${scenarioMode === 'quantile' ? 'active' : ''}`}
-              onClick={() => setScenarioMode('quantile')}
-            >
-              {t('pathDependency.quantileScenario', 'ML Scenario')}
-            </button>
-            <button 
-              className={`mode-btn ${scenarioMode === 'manual' ? 'active' : ''}`}
-              onClick={() => setScenarioMode('manual')}
-            >
-              {t('pathDependency.manualScenario', 'Manual Scenario')}
-            </button>
-          </div>
-        )}
-
-        {scenarioMode === 'quantile' && hasQuantiles ? (
+        {hasQuantiles ? (
           <div className="scenario-select">
-            <label>{t('pathDependency.scenario')}</label>
+            <label>{t('pathDependency.quantileScenario')}</label>
             <div className="quantile-scenario-buttons">
               {availableQuantiles.map(q => (
                 <button
@@ -254,38 +120,49 @@ export default function PathDependencyChart({
       </div>
 
       <div className="path-chart">
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 65 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" />
-            <XAxis 
-              dataKey="day" 
-              label={{ value: t('pathDependency.tradingDays'), position: 'bottom', fill: '#aaa' }}
-              tick={{ fill: '#888' }}
-            />
-            <YAxis 
-              domain={['auto', 'auto']}
-              label={{ value: t('pathDependency.value'), angle: -90, position: 'insideLeft', fill: '#aaa' }}
-              tick={{ fill: '#888' }}
-            />
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#18181f', border: '1px solid #2a2a32', borderRadius: '6px' }}
-              labelStyle={{ color: '#f1f1f1' }}
-              formatter={(value: number, name: string) => [
-                `${value.toFixed(2)}%`,
-                name === 'base' ? t('pathDependency.underlying') : (name === 'opt' ? t('pathDependency.option') : t('pathDependency.certificate'))
-              ]}
-              labelFormatter={(label) => `${t('tooltip.day')} ${label}`}
-            />
-            <Legend
-              formatter={(value) => value === 'base' ? t('pathDependency.underlying') : (value === 'opt' ? t('pathDependency.option') : `${t('inputs.factor')} ${factor}x ${direction === 'call' ? t('product.long') : t('product.short')}`)}
-              wrapperStyle={{ transform: 'translateY(22px)' }}
-            />
-            <ReferenceLine y={100} stroke="#666" strokeDasharray="3 3" />
-            <Line type="monotone" dataKey="base" stroke="#ffab00" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="opt" stroke="#64b5f6" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="cert" stroke={direction === 'call' ? '#00e676' : '#ff5252'} strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
+        {loading ? (
+          <div className="chart-loader">
+            <div className="loader-spinner"></div>
+            <span>{t('loading', 'Loading...')}</span>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 65 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a32" />
+              <XAxis 
+                dataKey="day" 
+                label={{ value: t('pathDependency.tradingDays'), position: 'bottom', fill: '#aaa' }}
+                tick={{ fill: '#888' }}
+              />
+              <YAxis 
+                domain={['auto', 'auto']}
+                label={{ value: t('pathDependency.value'), angle: -90, position: 'insideLeft', fill: '#aaa' }}
+                tick={{ fill: '#888' }}
+              />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#18181f', border: '1px solid #2a2a32', borderRadius: '6px' }}
+                labelStyle={{ color: '#f1f1f1' }}
+                formatter={(value: number, name: string) => [
+                  `${value.toFixed(2)}%`,
+                  name === 'base' ? t('pathDependency.underlying') : (name === 'opt' ? t('pathDependency.option') : t('pathDependency.certificate'))
+                ]}
+                labelFormatter={(label) => `${t('tooltip.day')} ${label}`}
+              />
+              <Legend
+                formatter={(value) => {
+                  if (value === 'base') return t('pathDependency.underlying')
+                  if (value === 'opt') return `${t('pathDependency.option')} (ATM, 1Y)`
+                  return `${t('inputs.factor')} ${factor}x ${direction === 'call' ? t('product.long') : t('product.short')}`
+                }}
+                wrapperStyle={{ transform: 'translateY(22px)' }}
+              />
+              <ReferenceLine y={100} stroke="#666" strokeDasharray="3 3" />
+              <Line type="monotone" dataKey="base" stroke="#ffab00" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="opt" stroke="#64b5f6" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="cert" stroke={direction === 'call' ? '#00e676' : '#ff5252'} strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       <div className="path-results">

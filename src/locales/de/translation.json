@@ -1,13 +1,16 @@
 {
   "header": {
-    "title": "Optionsschein Rechner",
-    "subtitle": "Analysieren Sie Call & Put Optionsscheine interaktiv",
+    "title": "Derivate Simulator",
+    "subtitle": "Hebelprodukte & Derivate",
     "disclaimer": "Disclaimer",
-    "disclaimerText": "Alle Ergebnisse sind beispielhaft. Annahmen, Gebühren und Marktverhalten können erheblich von der Realität abweichen. Dies ist keine Anlageberatung.",
+    "disclaimerText": "Nur zu Lernzwecken. Modellvorhersagen sind probabilistische Schätzungen und können ungenau sein. Diese Produkte sind hochriskant - ein Totalverlust des Kapitals ist möglich. Brokergebühren und Spreads werden nicht berücksichtigt. Keine Anlageberatung.",
     "aiPredictions": "\uD83E\uDD16 Nutze unsere KI Aktien Vorhersagen"
   },
   "footer": {
     "text": "MVP - Derivate Simulator für Retail-Kunden"
+  },
+  "notes": {
+    "selectAssetForSimulation": "Asset auswählen, um die simulierten Renditen zu sehen"
   },
   "loading": "Lädt...",
   "product": {
@@ -117,7 +120,18 @@
     "certificate": "Zertifikat",
     "option": "Option (Black-Scholes)",
     "expectedReturn": "Erwartete Rendite",
-    "volatilityDrag": "Volatility Drag",
+    "volatilityDrag": "Pfad-Effekt",
+    "quantileScenario": "KI-Szenarien",
+    "manualScenario": "Beispiel-Szenarien",
+    "manualVolatileDown": "Schwankend abwärts",
+    "manualSideways": "Schwankend seitwärts",
+    "manualVolatileUp": "Schwankend aufwärts",
+    "aiScenarioLabel": "{{name}} ({{ret}})",
+    "aiQ10": "Sehr pessimistisch",
+    "aiQ30": "Pessimistisch",
+    "aiQ50": "Basisszenario",
+    "aiQ70": "Optimistisch",
+    "aiQ90": "Sehr optimistisch",
     "explanation": "Pfadabhängigkeit",
     "explText1": "Das Zertifikat reagiert auf tägliche Veränderungen.",
     "explText2": "Bei",
@@ -133,16 +147,13 @@
   "explanation": {
     "warrantCall": "Sie setzen auf steigende Kurse. Liegt der Basiswert bei Fälligkeit über {{strike}} EUR, erhalten Sie die Differenz multipliziert mit dem Bezugsverhältnis. Ihr Break-Even liegt bei {{breakeven}} EUR. Darunter verfällt der Optionsschein wertlos.",
     "warrantPut": "Sie setzen auf fallende Kurse. Liegt der Basiswert bei Fälligkeit unter {{strike}} EUR, erhalten Sie die Differenz multipliziert mit dem Bezugsverhältnis. Ihr Break-Even liegt bei {{breakeven}} EUR. Darüber verfällt der Optionsschein wertlos.",
-    "knockoutCall": "Knock-Out Long: Sie profitieren von steigenden Kursen mit konstantem Hebel.",
-    "knockoutCallWarning": "Achtung: Fällt der Basiswert auf oder unter {{barrier}} EUR, verfällt das Produkt sofort wertlos!",
-    "knockoutCallDistance": "Aktueller Abstand zur Barriere:",
-    "knockoutPut": "Knock-Out Short: Sie profitieren von fallenden Kursen mit konstantem Hebel.",
-    "knockoutPutWarning": "Achtung: Steigt der Basiswert auf oder über {{barrier}} EUR, verfällt das Produkt sofort wertlos!",
-    "knockoutBarrierType": "Wichtig: Prüfen Sie, ob Ihr Produkt eine kontinuierliche Barriere (Intraday-Überwachung) oder eine diskrete Barriere (nur zu bestimmten Zeitpunkten geprüft, z.B. Tagesschluss) hat. Dies beeinflusst das Knock-Out-Risiko erheblich!",
-    "factor": "Faktor {{factor}}x {{direction}}: Das Zertifikat bildet die tägliche prozentuale Veränderung des Basiswerts mit Faktor {{factor}} ab.",
-    "factorCallExample": "Steigt der Basiswert um 1%, gewinnt das Zertifikat {{factor}}%.",
-    "factorPutExample": "Fällt der Basiswert um 1%, gewinnt das Zertifikat {{factor}}%.",
-    "factorWarning": "Achtung: Pfadabhängigkeit! Bei längerer Haltedauer kann die Performance erheblich vom erwarteten Ergebnis abweichen."
+    "knockoutCallDesc": "Profitieren Sie von steigenden Kursen mit konstantem Hebel. Der Wert bewegt sich 1:1 mit dem Basiswert oberhalb des Strike-Preises.",
+    "knockoutPutDesc": "Profitieren Sie von fallenden Kursen mit konstantem Hebel. Der Wert bewegt sich 1:1 mit dem Basiswert unterhalb des Strike-Preises.",
+    "knockoutCallWarning": "Fällt der Basiswert auf {{barrier}} EUR oder darunter, verfällt das Produkt sofort wertlos!",
+    "knockoutPutWarning": "Steigt der Basiswert auf {{barrier}} EUR oder darüber, verfällt das Produkt sofort wertlos!",
+    "knockoutCallDistance": "Abstand zur Barriere:",
+    "factorDesc": "Dieses {{factor}}x {{direction}} Zertifikat multipliziert die tägliche Performance des Basiswerts mit {{factor}}. Eine 1% Bewegung wird zu einer {{factor}}% Bewegung.",
+    "factorWarning": "Pfadabhängigkeit: Bei längerer Haltedauer kann die Gesamtrendite erheblich von {{factor}}x der Basiswert-Rendite abweichen, da täglich neu berechnet wird."
   },
   "payoffChart": {
     "dailyChange": "Tägliche Veränderung Basiswert (%)",
@@ -192,9 +203,5 @@
     "onePlus": "Zeigt die erwartete prozentuale Veränderung des Zertifikats, wenn sich der Basiswert um +1% bewegt. Bei einem 3x Long Faktor-Zertifikat wären das +3%.",
     "asset": "Wählen Sie ein Asset, um den Preis automatisch auszufüllen und ML-Prognosen zu sehen",
     "forecastPeriod": "Der Zeithorizont für ML-Prognosen"
-  },
-  "pathDependency": {
-    "quantileScenario": "ML-Szenario",
-    "manualScenario": "Manuelles Szenario"
   }
 }

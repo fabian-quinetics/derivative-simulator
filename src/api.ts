@@ -53,3 +53,45 @@ export function fetchAssets(assetClass: number = 2): Promise<{ assets: Asset[] }
 export function fetchAssetPredictions(assetId: number, forecastPeriod: number): Promise<AssetPredictions> {
   return postJson('/api/asset-predictions', { assetId, forecastPeriod })
 }
+
+export interface PathDependencyResult {
+  data: Array<{ day: number; base: number; cert: number; opt: number; difference: number }>
+  baseReturn: number
+  certReturn: number
+  optReturn: number
+  expectedReturn: number
+  volatilityDrag: number
+}
+
+export function fetchPathDependency(params: {
+  factor: number
+  direction: 'call' | 'put'
+  adjustmentThreshold: number
+  impliedVolPct: number
+  riskFreePct: number
+  timeHorizonDays: number
+  quantileReturns?: Record<number, number>
+  selectedQuantile?: number
+  manualScenario?: string
+}): Promise<PathDependencyResult> {
+  return postJson('/api/path-dependency', params)
+}
+
+export interface QuantilePayoffResult {
+  data: Array<{ quantile: number; underlyingReturn: number; payoff: number }>
+  forecastPeriod: number
+}
+
+export function fetchQuantilePayoff(params: {
+  productType: string
+  direction: string
+  currentPrice: number
+  strikePrice: number
+  premium: number
+  knockoutBarrier?: number
+  ratio?: number
+  quantileReturns: Record<number, number>
+  forecastPeriod?: number
+}): Promise<QuantilePayoffResult> {
+  return postJson('/api/quantile-payoff', params)
+}

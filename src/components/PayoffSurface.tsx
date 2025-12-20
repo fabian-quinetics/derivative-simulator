@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchPayoffSurface } from '../api'
+import { fetchPayoffSurface, fetchQuantilePayoff } from '../api'
 
 type ProductType = 'warrant' | 'knockout' | 'factor'
 type Direction = 'call' | 'put'
@@ -23,54 +23,49 @@ interface Props {
   forecastPeriod?: number
 }
 
-function calculateQuantilePayoff(
-  direction: Direction,
-  currentPrice: number,
-  strikePrice: number,
-  premium: number,
-  underlyingReturn: number
-): number {
-  const finalPrice = currentPrice * (1 + underlyingReturn / 100)
-  
-  let intrinsic = 0
-  if (direction === 'call') {
-    intrinsic = Math.max(0, finalPrice - strikePrice)
-  } else {
-    intrinsic = Math.max(0, strikePrice - finalPrice)
-  }
-  
-  if (premium <= 0 || isNaN(premium)) {
-    return underlyingReturn
-  }
-  
-  const pnl = intrinsic - premium
-  return (pnl / premium) * 100
-}
-
 export default function PayoffSurface(props: Props) {
   const { t } = useTranslation()
   const [grid, setGrid] = useState<any>({ rows: [], min: 0, max: 0 })
+  const [quantileData, setQuantileData] = useState<Array<{ quantile: number; underlyingReturn: number; payoff: number }>>([])
   const [loading, setLoading] = useState(true)
 
   const hasQuantiles = props.quantileReturns && Object.keys(props.quantileReturns).length > 0
 
   useEffect(() => {
-    if (hasQuantiles) {
-      setLoading(false)
-      return
-    }
-    
     let cancelled = false
     setLoading(true)
-    fetchPayoffSurface(props).then((r) => {
-      if (!cancelled) {
-        setGrid(r)
-        setLoading(false)
-      }
-    })
-    return () => {
-      cancelled = true
+    
+    if (hasQuantiles) {
+      fetchQuantilePayoff({
+        productType: props.productType,
+        direction: props.direction,
+        currentPrice: props.currentPrice,
+        strikePrice: props.strikePrice,
+        premium: props.premium,
+        knockoutBarrier: props.knockoutBarrier,
+        ratio: props.ratio,
+        quantileReturns: props.quantileReturns!,
+        forecastPeriod: props.forecastPeriod,
+      }).then((res) => {
+        if (!cancelled) {
+          setQuantileData(res.data)
+          setLoading(false)
+        }
+      }).catch(() => {
+        if (!cancelled) setLoading(false)
+      })
+    } else {
+      fetchPayoffSurface(props).then((r) => {
+        if (!cancelled) {
+          setGrid(r)
+          setLoading(false)
+        }
+      }).catch(() => {
+        if (!cancelled) setLoading(false)
+      })
     }
+    
+    return () => { cancelled = true }
   }, [
     props.productType,
     props.direction,
@@ -85,6 +80,8 @@ export default function PayoffSurface(props: Props) {
     props.driftPct,
     props.riskFreePct,
     props.maturityDays,
+    props.quantileReturns,
+    props.forecastPeriod,
     hasQuantiles,
   ])
 
@@ -105,23 +102,7 @@ export default function PayoffSurface(props: Props) {
     )
   }
 
-  if (hasQuantiles && props.quantileReturns) {
-    const quantiles = [10, 20, 30, 40, 50, 60, 70, 80, 90].filter(
-      q => props.quantileReturns![q] !== undefined
-    )
-
-    const quantileData = quantiles.map(q => {
-      const underlyingReturn = props.quantileReturns![q]
-      const payoff = calculateQuantilePayoff(
-        props.direction,
-        props.currentPrice,
-        props.strikePrice,
-        props.premium,
-        underlyingReturn
-      )
-      return { quantile: q, underlyingReturn, payoff }
-    })
-
+  if (hasQuantiles && quantileData.length > 0) {
     return (
       <div className="mc-container">
         <div className="heatmap">

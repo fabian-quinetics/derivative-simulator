@@ -286,35 +286,6 @@ export default function WarrantCalculator() {
               </div>
             </div>
 
-            {assetPredictions && (
-              <div className="predictions-display">
-                <div className="prediction-item">
-                  <span className="prediction-label">{t('predictions.predictedVol', 'Predicted Volatility')}</span>
-                  <span className="prediction-value">
-                    {assetPredictions.predictedVolatility !== null 
-                      ? `${assetPredictions.predictedVolatility.toFixed(1)}%` 
-                      : '-'}
-                  </span>
-                </div>
-                {Object.keys(assetPredictions.quantileReturns).length > 0 && (
-                  <div className="quantile-predictions">
-                    <span className="prediction-label">{t('predictions.quantileReturns', 'Return Scenarios')}</span>
-                    <div className="quantile-grid">
-                      {[10, 30, 50, 70, 90].map(q => (
-                        <div key={q} className={`quantile-item ${q < 50 ? 'bearish' : q > 50 ? 'bullish' : 'neutral'}`}>
-                          <span className="q-label">Q{q}</span>
-                          <span className="q-value">
-                            {assetPredictions.quantileReturns[q] !== undefined 
-                              ? `${assetPredictions.quantileReturns[q] >= 0 ? '+' : ''}${assetPredictions.quantileReturns[q].toFixed(1)}%`
-                              : '-'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </>
         )}
         
@@ -413,6 +384,12 @@ export default function WarrantCalculator() {
 
         {params.productType !== 'factor' && (
           <>
+            {assetPredictions?.predictedVolatility !== null && assetPredictions?.predictedVolatility !== undefined && (
+              <div className="predicted-vol-hint">
+                <span className="vol-label">{t('predictions.predictedVol')}</span>
+                <span className="vol-value">{assetPredictions.predictedVolatility.toFixed(1)}%</span>
+              </div>
+            )}
             <div className="input-group">
               <label className="label-with-info">
                 {t('inputs.impliedVol')}
@@ -462,6 +439,7 @@ export default function WarrantCalculator() {
                   updateParam('maturityDays', v)
                 }}
                 step="1"
+                disabled={dataMode === 'real' && selectedAssetId !== null}
               />
               <input
                 type="range"
@@ -483,6 +461,7 @@ export default function WarrantCalculator() {
                   const v = parseFloat((e.target as HTMLInputElement).value)
                   updateParam('maturityDays', v)
                 }}
+                disabled={dataMode === 'real' && selectedAssetId !== null}
               />
             </div>
             <div className="input-group">
@@ -884,10 +863,30 @@ export default function WarrantCalculator() {
           </div>
         </div>
 
+        {params.productType !== 'factor' && assetPredictions && Object.keys(assetPredictions.quantileReturns).length > 0 && (
+          <div className="predictions-display">
+            <span className="prediction-label">{t('predictions.quantileReturns', 'Return Scenarios')}</span>
+            <div className="quantile-grid">
+              {[10, 30, 50, 70, 90].map(q => (
+                <div key={q} className={`quantile-item ${q < 50 ? 'bearish' : q > 50 ? 'bullish' : 'neutral'}`}>
+                  <span className="q-label">Q{q}</span>
+                  <span className="q-value">
+                    {assetPredictions.quantileReturns[q] !== undefined 
+                      ? `${assetPredictions.quantileReturns[q] >= 0 ? '+' : ''}${assetPredictions.quantileReturns[q].toFixed(1)}%`
+                      : '-'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {params.productType !== 'factor' && (
           <div className="chart-container">
             <h2>{t('charts.payoffAtMaturity')}</h2>
-            {summaryLoading ? (
+            {dataMode === 'real' && selectedAssetId === null ? (
+              <div className="scenario-note">{t('notes.selectAssetForSimulation')}</div>
+            ) : summaryLoading ? (
               <div className="chart-loader">
                 <div className="loader-spinner"></div>
                 <span>{t('loading', 'Loading...')}</span>
@@ -902,6 +901,7 @@ export default function WarrantCalculator() {
                 histogram={factorHistogram}
                 currentPrice={params.currentPrice}
                 strikePrice={params.strikePrice}
+                quantileReturns={assetPredictions?.quantileReturns}
               />
             )}
           </div>
@@ -931,39 +931,47 @@ export default function WarrantCalculator() {
         {params.productType !== 'factor' && (
           <div className="chart-container surface-block">
             <h2>{assetPredictions ? t('charts.quantilePayoffs', 'Quantile Payoff Scenarios') : t('charts.returnHeatmap')}</h2>
-            <PayoffSurface
-              productType={params.productType}
-              direction={params.direction}
-              currentPrice={params.currentPrice}
-              strikePrice={params.strikePrice}
-              premium={premiumValue}
-              ratio={params.ratio}
-              knockoutBarrier={params.knockoutBarrier}
-              factor={params.factor}
-              adjustmentThreshold={params.adjustmentThreshold}
-              impliedVol={params.impliedVol}
-              driftPct={params.driftPct}
-              riskFreePct={params.riskFreePct}
-              maturityDays={params.maturityDays}
-              quantileReturns={assetPredictions?.quantileReturns}
-              forecastPeriod={forecastPeriod}
-            />
+            {dataMode === 'real' && selectedAssetId === null ? (
+              <div className="scenario-note">{t('notes.selectAssetForSimulation')}</div>
+            ) : (
+              <PayoffSurface
+                productType={params.productType}
+                direction={params.direction}
+                currentPrice={params.currentPrice}
+                strikePrice={params.strikePrice}
+                premium={premiumValue}
+                ratio={params.ratio}
+                knockoutBarrier={params.knockoutBarrier}
+                factor={params.factor}
+                adjustmentThreshold={params.adjustmentThreshold}
+                impliedVol={params.impliedVol}
+                driftPct={params.driftPct}
+                riskFreePct={params.riskFreePct}
+                maturityDays={params.maturityDays}
+                quantileReturns={assetPredictions?.quantileReturns}
+                forecastPeriod={forecastPeriod}
+              />
+            )}
           </div>
         )}
 
         {params.productType === 'factor' && (
           <div className="chart-container path-container">
             <h2>{t('charts.pathDependency')}</h2>
-            <PathDependencyChart
-              factor={params.factor}
-              direction={params.direction}
-              adjustmentThreshold={params.adjustmentThreshold}
-              impliedVolPct={params.impliedVol}
-              riskFreePct={params.riskFreePct}
-              timeHorizonDays={params.maturityDays}
-              quantileReturns={assetPredictions?.quantileReturns}
-              forecastPeriod={forecastPeriod}
-            />
+            {dataMode === 'real' && selectedAssetId === null ? (
+              <div className="scenario-note">{t('notes.selectAssetForSimulation')}</div>
+            ) : (
+              <PathDependencyChart
+                factor={params.factor}
+                direction={params.direction}
+                adjustmentThreshold={params.adjustmentThreshold}
+                impliedVolPct={params.impliedVol}
+                riskFreePct={params.riskFreePct}
+                timeHorizonDays={params.maturityDays}
+                quantileReturns={assetPredictions?.quantileReturns}
+                forecastPeriod={forecastPeriod}
+              />
+            )}
           </div>
         )}
 
@@ -975,27 +983,21 @@ export default function WarrantCalculator() {
           {params.productType === 'warrant' && params.direction === 'put' && (
             <p>{t('explanation.warrantPut', { strike: params.strikePrice.toFixed(2), breakeven: metrics.breakeven.toFixed(2) })}</p>
           )}
-          {params.productType === 'knockout' && params.direction === 'call' && (
-            <p>
-              <strong>{t('explanation.knockoutCall')}</strong>
-              <span className="warning"> {t('explanation.knockoutCallWarning', { barrier: params.knockoutBarrier.toFixed(2) })}</span> {t('explanation.knockoutCallDistance')} <strong>{metrics.knockoutDistance.toFixed(1)}%</strong>.
-            </p>
-          )}
-          {params.productType === 'knockout' && params.direction === 'put' && (
-            <p>
-              <strong>{t('explanation.knockoutPut')}</strong>
-              <span className="warning"> {t('explanation.knockoutPutWarning', { barrier: params.knockoutBarrier.toFixed(2) })}</span> {t('explanation.knockoutCallDistance')} <strong>{metrics.knockoutDistance.toFixed(1)}%</strong>.
-            </p>
-          )}
           {params.productType === 'knockout' && (
-            <p className="info-note">{t('explanation.knockoutBarrierType')}</p>
+            <>
+              <p>{t(params.direction === 'call' ? 'explanation.knockoutCallDesc' : 'explanation.knockoutPutDesc')}</p>
+              <p className="warning-box">
+                {t(params.direction === 'call' ? 'explanation.knockoutCallWarning' : 'explanation.knockoutPutWarning', { barrier: params.knockoutBarrier.toFixed(2) })}
+                <br />
+                <span className="barrier-distance">{t('explanation.knockoutCallDistance')} <strong>{metrics.knockoutDistance.toFixed(1)}%</strong></span>
+              </p>
+            </>
           )}
           {params.productType === 'factor' && (
-            <p>
-              <strong>{t('explanation.factor', { factor: params.factor, direction: params.direction === 'call' ? t('product.long') : t('product.short') })}</strong>
-              {' '}{params.direction === 'call' ? t('explanation.factorCallExample', { factor: params.factor }) : t('explanation.factorPutExample', { factor: params.factor })}
-              <span className="warning"> {t('explanation.factorWarning')}</span>
-            </p>
+            <>
+              <p>{t('explanation.factorDesc', { factor: params.factor, direction: params.direction === 'call' ? t('product.long') : t('product.short') })}</p>
+              <p className="warning-box">{t('explanation.factorWarning')}</p>
+            </>
           )}
         </div>
       </div>

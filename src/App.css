@@ -23,24 +23,45 @@
 }
 
 .header {
-  text-align: center;
-  padding: 2.5rem 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
-  position: relative;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1300px;
+  gap: 1rem;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .logo-link {
-  display: inline-block;
-  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .logo-img {
-  height: 50px;
-  border-radius: 10px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.header-title {
+  text-align: left;
 }
 
 .header h1 {
-  font-size: 1.75rem;
+  font-size: 1.2rem;
   margin: 0;
   font-weight: 600;
   color: var(--text-primary);
@@ -48,42 +69,22 @@
 
 .subtitle {
   color: var(--text-secondary);
-  margin-top: 0.4rem;
-  font-size: 0.9rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.75rem;
 }
 
-.disclaimer {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
-  background: rgba(234, 179, 8, 0.1);
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  border-radius: 6px;
-  font-size: 0.85rem;
+.disclaimer-inline {
   color: var(--text-secondary);
-  line-height: 1.5;
-  text-align: left;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.disclaimer-icon {
-  display: inline-block;
-  margin-right: 0.5rem;
-  font-size: 1rem;
-}
-
-.disclaimer strong {
-  color: var(--accent-gold);
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.8;
 }
 
 .header-buttons {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .ai-predictions-btn {
@@ -151,28 +152,34 @@ main {
   }
 }
 
-@media (max-width: 600px) {
-  .header {
-    padding: 1.75rem 1rem 1.25rem;
+@media (max-width: 700px) {
+  .header-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  .header-brand {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .header-title {
+    text-align: left;
   }
 
   .header h1 {
-    font-size: 1.4rem;
+    font-size: 1.1rem;
   }
 
-  .header-buttons {
-    position: static;
-    margin-top: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    padding: 0 0.5rem;
+  .subtitle {
+    font-size: 0.7rem;
   }
+}
 
-  .ai-predictions-btn,
-  .lang-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+@media (max-width: 600px) {
+  .header {
+    padding: 0.75rem 1rem;
   }
 
   main {
@@ -477,14 +484,38 @@ main {
 }
 
 .explanation p {
-  margin: 0;
+  margin: 0 0 0.75rem;
   color: var(--text-secondary);
   line-height: 1.6;
   font-size: 0.9rem;
 }
 
+.explanation p:last-child {
+  margin-bottom: 0;
+}
+
 .explanation strong { color: var(--text-primary); }
-.explanation .warning { color: var(--accent-knockout); display: block; margin-top: 0.4rem; }
+
+.explanation .warning-box {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: 6px;
+  color: var(--accent-knockout);
+  font-size: 0.85rem;
+}
+
+.explanation .barrier-distance {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--text-secondary);
+}
+
+.explanation .barrier-distance strong {
+  color: var(--text-primary);
+}
+
 .explanation .info-note {
   color: var(--accent-gold);
   font-size: 0.85rem;
@@ -1073,4 +1104,45 @@ main {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--text-primary);
   color: var(--text-primary);
+}
+
+.scenario-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.05) 0%, rgba(234, 179, 8, 0.02) 100%);
+  border: 1px dashed rgba(234, 179, 8, 0.3);
+  border-radius: 12px;
+}
+
+.predicted-vol-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 6px;
+  color: var(--accent-gold);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.predicted-vol-hint .vol-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+}
+
+.predicted-vol-hint .vol-value {
+  font-size: 0.95rem;
+  font-weight: 700;
 }

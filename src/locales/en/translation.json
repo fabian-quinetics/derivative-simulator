@@ -1,13 +1,16 @@
 {
   "header": {
-    "title": "Warrant / Option Calculator",
-    "subtitle": "Analyze Call & Put Options interactively",
+    "title": "Derivative Simulator",
+    "subtitle": "Leveraged Products & Derivatives",
     "disclaimer": "Disclaimer",
-    "disclaimerText": "All results are illustrative. Assumptions, fees, and market behavior can differ materially from reality. This is not investment advice.",
+    "disclaimerText": "Educational tool only. Model predictions are probabilistic estimates and may be inaccurate. These products are highly risky - total loss of capital is possible. Brokerage costs and spreads are not modelled. Not investment advice.",
     "aiPredictions": "\uD83E\uDD16 Use our AI stock predictions"
   },
   "footer": {
     "text": "MVP - Derivative Simulator for Retail Customers"
+  },
+  "notes": {
+    "selectAssetForSimulation": "Select an asset to show the simulated returns"
   },
   "loading": "Loading...",
   "product": {
@@ -117,7 +120,18 @@
     "certificate": "Certificate",
     "option": "Option (Black-Scholes)",
     "expectedReturn": "Expected Return",
-    "volatilityDrag": "Volatility Drag",
+    "volatilityDrag": "Path effect",
+    "quantileScenario": "AI scenarios",
+    "manualScenario": "Example scenarios",
+    "manualVolatileDown": "Choppy downtrend",
+    "manualSideways": "Choppy sideways",
+    "manualVolatileUp": "Choppy uptrend",
+    "aiScenarioLabel": "{{name}} ({{ret}})",
+    "aiQ10": "Very pessimistic",
+    "aiQ30": "Pessimistic",
+    "aiQ50": "Base case",
+    "aiQ70": "Optimistic",
+    "aiQ90": "Very optimistic",
     "explanation": "Path Dependency",
     "explText1": "The certificate reacts to daily changes.",
     "explText2": "With a",
@@ -133,16 +147,13 @@
   "explanation": {
     "warrantCall": "You are betting on rising prices. If the underlying is above {{strike}} EUR at maturity, you receive the difference multiplied by the subscription ratio. Your break-even is at {{breakeven}} EUR. Below that, the warrant expires worthless.",
     "warrantPut": "You are betting on falling prices. If the underlying is below {{strike}} EUR at maturity, you receive the difference multiplied by the subscription ratio. Your break-even is at {{breakeven}} EUR. Above that, the warrant expires worthless.",
-    "knockoutCall": "Knock-Out Long: You profit from rising prices with constant leverage.",
-    "knockoutCallWarning": "Warning: If the underlying falls to or below {{barrier}} EUR, the product expires worthless immediately!",
-    "knockoutCallDistance": "Current distance to barrier:",
-    "knockoutPut": "Knock-Out Short: You profit from falling prices with constant leverage.",
-    "knockoutPutWarning": "Warning: If the underlying rises to or above {{barrier}} EUR, the product expires worthless immediately!",
-    "knockoutBarrierType": "Important: Check whether your product has a continuous barrier (monitored intraday) or a discrete barrier (checked only at specific times, e.g., end of day). This significantly affects knock-out risk!",
-    "factor": "Factor {{factor}}x {{direction}}: The certificate reflects the daily percentage change of the underlying with factor {{factor}}.",
-    "factorCallExample": "If the underlying rises by 1%, the certificate gains {{factor}}%.",
-    "factorPutExample": "If the underlying falls by 1%, the certificate gains {{factor}}%.",
-    "factorWarning": "Warning: Path dependency! With longer holding periods, performance can deviate significantly from the expected result."
+    "knockoutCallDesc": "Profit from rising prices with constant leverage. The value moves 1:1 with the underlying above the strike price.",
+    "knockoutPutDesc": "Profit from falling prices with constant leverage. The value moves 1:1 with the underlying below the strike price.",
+    "knockoutCallWarning": "If the underlying falls to {{barrier}} EUR or below, the product expires worthless immediately!",
+    "knockoutPutWarning": "If the underlying rises to {{barrier}} EUR or above, the product expires worthless immediately!",
+    "knockoutCallDistance": "Distance to barrier:",
+    "factorDesc": "This {{factor}}x {{direction}} certificate multiplies the daily performance of the underlying by {{factor}}. A 1% move becomes a {{factor}}% move.",
+    "factorWarning": "Path dependency: Over longer holding periods, the cumulative return can differ significantly from {{factor}}x the underlying's total return due to daily compounding."
   },
   "payoffChart": {
     "dailyChange": "Daily Change Underlying (%)",
@@ -192,9 +203,5 @@
     "onePlus": "Shows the expected percentage change of the certificate when the underlying moves by +1%. For a 3x Long factor certificate, this would be +3%.",
     "asset": "Select an asset to auto-fill price and see ML predictions",
     "forecastPeriod": "The time horizon for ML predictions"
-  },
-  "pathDependency": {
-    "quantileScenario": "ML Scenario",
-    "manualScenario": "Manual Scenario"
   }
 }

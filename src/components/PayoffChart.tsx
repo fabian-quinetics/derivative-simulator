@@ -10,9 +10,10 @@ interface PayoffChartProps {
   histogram?: Array<{ bucket: number; count: number }>
   currentPrice?: number
   strikePrice?: number
+  quantileReturns?: Record<number, number>
 }
 
-export default function PayoffChart({ data, type, breakeven, productType, knockoutBarrier, histogram, currentPrice, strikePrice }: PayoffChartProps) {
+export default function PayoffChart({ data, type, breakeven, productType, knockoutBarrier, histogram, currentPrice, strikePrice, quantileReturns }: PayoffChartProps) {
   const { t } = useTranslation()
 
   if (productType === 'factor' && histogram && histogram.length > 0) {
@@ -148,6 +149,23 @@ export default function PayoffChart({ data, type, breakeven, productType, knocko
             label={{ value: t('payoffChart.spot'), fill: '#8bc34a', position: 'insideTop', dy: 58 }}
           />
         )}
+
+        {productType !== 'factor' && quantileReturns && currentPrice && [10, 30, 50, 70, 90].map(q => {
+          const ret = quantileReturns[q]
+          if (ret === undefined) return null
+          const targetPrice = currentPrice * (1 + ret / 100)
+          const color = q < 50 ? '#ef4444' : q > 50 ? '#22c55e' : '#888'
+          return (
+            <ReferenceLine
+              key={`q${q}`}
+              x={targetPrice}
+              stroke={color}
+              strokeDasharray="1 3"
+              strokeWidth={1}
+              strokeOpacity={0.6}
+            />
+          )
+        })}
         
         {productType === 'factor' && (
           <ReferenceLine 
