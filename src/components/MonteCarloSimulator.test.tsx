@@ -30,6 +30,7 @@ describe('MonteCarloSimulator', () => {
     driftPct: 5,
     riskFreePct: 1,
     days: 90,
+    sims: 1000,
   }
 
   it('renders loading state initially', () => {
