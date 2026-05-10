@@ -10,7 +10,10 @@
     "text": "MVP - Derivative Simulator for Retail Customers"
   },
   "notes": {
-    "selectAssetForSimulation": "Select an asset to show the simulated returns"
+    "selectAssetForSimulation": "Select an asset to show the simulated returns",
+    "realAssetsLoginRequired": "Log in with a paid account to use real assets and AI scenarios.",
+    "realAssetsPaidRequired": "Real assets and AI scenarios are available to paid customers only.",
+    "realAssetsUnavailable": "Real assets are currently unavailable. Simulation mode is still available."
   },
   "loading": "Loading...",
   "product": {

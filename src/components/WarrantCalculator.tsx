@@ -31,6 +31,15 @@ type BsGreeks = { delta: number; gamma: number; vega: number; theta: number }
 
 const FORECAST_PERIODS_REAL = [60, 100]
 type DataMode = 'simulation' | 'real'
+type RealAssetAccess = 'unknown' | 'allowed' | 'login' | 'upgrade' | 'error'
+
+function getErrorStatus(error: unknown) {
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = Number((error as { status: unknown }).status)
+    return Number.isNaN(status) ? undefined : status
+  }
+  return undefined
+}
 
 export default function WarrantCalculator() {
   const { t } = useTranslation()
@@ -65,18 +74,41 @@ export default function WarrantCalculator() {
   const [assetPredictions, setAssetPredictions] = useState<AssetPredictions | null>(null)
   const [assetSearch, setAssetSearch] = useState('')
   const [assetsLoading, setAssetsLoading] = useState(false)
+  const [realAssetAccess, setRealAssetAccess] = useState<RealAssetAccess>('unknown')
 
   const [summary, setSummary] = useState<any>(null)
   const [modalInfo, setModalInfo] = useState<{ title: string; content: string } | null>(null)
+
+  const handleRealAssetAccessError = (error: unknown) => {
+    const status = getErrorStatus(error)
+
+    setAssets([])
+    setSelectedAssetId(null)
+    setAssetPredictions(null)
+    setAssetSearch('')
+    setDataMode('simulation')
+
+    if (status === 401) {
+      setRealAssetAccess('login')
+    } else if (status === 403) {
+      setRealAssetAccess('upgrade')
+    } else {
+      setRealAssetAccess('error')
+    }
+  }
 
   useEffect(() => {
     if (dataMode !== 'real') return
     if (assets.length > 0) return
     setAssetsLoading(true)
     fetchAssets(2).then(res => {
-      setAssets(res.assets)
+      setAssets(Array.isArray(res.assets) ? res.assets : [])
+      setRealAssetAccess('allowed')
       setAssetsLoading(false)
-    }).catch(() => setAssetsLoading(false))
+    }).catch(error => {
+      setAssetsLoading(false)
+      handleRealAssetAccessError(error)
+    })
   }, [dataMode, assets.length])
 
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -97,7 +129,14 @@ export default function WarrantCalculator() {
           }))
           setMaturityDraft(forecastPeriod)
         }
-      }).catch(() => setAssetPredictions(null))
+      }).catch(error => {
+        const status = getErrorStatus(error)
+        if (status === 401 || status === 403) {
+          handleRealAssetAccessError(error)
+          return
+        }
+        setAssetPredictions(null)
+      })
     } else {
       setAssetPredictions(null)
     }
@@ -194,6 +233,15 @@ export default function WarrantCalculator() {
     setModalInfo({ title: t(titleKey), content: t(infoKey) })
   }
 
+  const realAssetNoticeKey =
+    realAssetAccess === 'login'
+      ? 'notes.realAssetsLoginRequired'
+      : realAssetAccess === 'upgrade'
+        ? 'notes.realAssetsPaidRequired'
+        : realAssetAccess === 'error'
+          ? 'notes.realAssetsUnavailable'
+          : null
+
   return (
     <div className="calculator">
       {modalInfo && (
@@ -225,6 +273,11 @@ export default function WarrantCalculator() {
               {t('inputs.realAssets', 'Real assets')}
             </button>
           </div>
+          {realAssetNoticeKey && (
+            <div className="access-note" role="status">
+              {t(realAssetNoticeKey)}
+            </div>
+          )}
         </div>
 
         {dataMode === 'real' && (

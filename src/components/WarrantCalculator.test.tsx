@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { fetchAssets } from '../api'
 import WarrantCalculator from './WarrantCalculator'
 
 describe('WarrantCalculator', () => {
@@ -27,5 +28,17 @@ describe('WarrantCalculator', () => {
     const knockoutBtn = screen.getByText('product.knockout')
     fireEvent.click(knockoutBtn)
     expect(knockoutBtn.closest('button')).toHaveClass('active')
+  })
+
+  it('shows paid access notice when real assets are forbidden', async () => {
+    vi.mocked(fetchAssets).mockRejectedValueOnce({ status: 403 })
+
+    render(<WarrantCalculator />)
+    fireEvent.click(screen.getByText('inputs.realAssets'))
+
+    await waitFor(() => {
+      expect(screen.getByText('notes.realAssetsPaidRequired')).toBeInTheDocument()
+    })
+    expect(screen.getByText('inputs.simulation').closest('button')).toHaveClass('active')
   })
 })

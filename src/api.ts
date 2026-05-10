@@ -3,18 +3,44 @@ const API_BASE =
     ? 'http://127.0.0.1:8081/derivative-simulator'
     : '/derivative-simulator'
 
+export class ApiError extends Error {
+  status: number
+  payload: unknown
+
+  constructor(status: number, payload: unknown, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.payload = payload
+  }
+}
+
+async function readJsonResponse<T>(res: Response): Promise<T> {
+  const payload = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    const message =
+      payload && typeof payload === 'object' && 'error' in payload
+        ? String((payload as { error: unknown }).error)
+        : `Request failed with status ${res.status}`
+    throw new ApiError(res.status, payload, message)
+  }
+
+  return payload as T
+}
+
 async function postJson<T>(path: string, body: any): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  return await res.json()
+  return readJsonResponse<T>(res)
 }
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`)
-  return await res.json()
+  return readJsonResponse<T>(res)
 }
 
 export function fetchSummary(params: any) {

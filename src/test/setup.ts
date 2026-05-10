@@ -25,6 +25,6 @@ vi.mock('../api', () => ({
   fetchPathDependency: vi.fn().mockResolvedValue({ data: [], baseReturn: 0, certReturn: 0, optReturn: 0, expectedReturn: 0, volatilityDrag: 0 }),
   fetchQuantilePayoff: vi.fn().mockResolvedValue({ data: [], forecastPeriod: 30 }),
   fetchSummary: vi.fn().mockResolvedValue([]),
-  fetchAssets: vi.fn().mockResolvedValue([]),
+  fetchAssets: vi.fn().mockResolvedValue({ assets: [] }),
   fetchAssetPredictions: vi.fn().mockResolvedValue(null),
 }))

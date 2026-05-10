@@ -10,7 +10,10 @@
     "text": "MVP - Derivate Simulator für Retail-Kunden"
   },
   "notes": {
-    "selectAssetForSimulation": "Asset auswählen, um die simulierten Renditen zu sehen"
+    "selectAssetForSimulation": "Asset auswählen, um die simulierten Renditen zu sehen",
+    "realAssetsLoginRequired": "Melden Sie sich mit einem bezahlten Konto an, um reale Assets und KI-Szenarien zu nutzen.",
+    "realAssetsPaidRequired": "Reale Assets und KI-Szenarien sind nur für zahlende Kunden verfügbar.",
+    "realAssetsUnavailable": "Reale Assets sind derzeit nicht verfügbar. Der Simulationsmodus bleibt nutzbar."
   },
   "loading": "Lädt...",
   "product": {
