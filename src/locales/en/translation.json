@@ -3,8 +3,7 @@
     "title": "Derivative Simulator",
     "subtitle": "Leveraged Products & Derivatives",
     "disclaimer": "Disclaimer",
-    "disclaimerText": "Educational tool only. Model predictions are probabilistic estimates and may be inaccurate. These products are highly risky - total loss of capital is possible. Brokerage costs and spreads are not modelled. Not investment advice.",
-    "aiPredictions": "\uD83E\uDD16 Use our AI stock predictions"
+    "disclaimerText": "Educational tool only. Model predictions are probabilistic estimates and may be inaccurate. These products are highly risky - total loss of capital is possible. Brokerage costs and spreads are not modelled. Not investment advice."
   },
   "footer": {
     "text": "MVP - Derivative Simulator for Retail Customers"

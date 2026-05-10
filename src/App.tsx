@@ -23,14 +23,6 @@ function App() {
             </div>
           </div>
           <div className="header-buttons">
-            <a
-              href={BASE_URL}
-              className="ai-predictions-btn"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t('header.aiPredictions')}
-            </a>
             <button 
               className="lang-toggle"
               onClick={() => i18n.changeLanguage(i18n.language === 'de' ? 'en' : 'de')}

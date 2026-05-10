@@ -3,8 +3,7 @@
     "title": "Derivate Simulator",
     "subtitle": "Hebelprodukte & Derivate",
     "disclaimer": "Disclaimer",
-    "disclaimerText": "Nur zu Lernzwecken. Modellvorhersagen sind probabilistische Schätzungen und können ungenau sein. Diese Produkte sind hochriskant - ein Totalverlust des Kapitals ist möglich. Brokergebühren und Spreads werden nicht berücksichtigt. Keine Anlageberatung.",
-    "aiPredictions": "\uD83E\uDD16 Nutze unsere KI Aktien Vorhersagen"
+    "disclaimerText": "Nur zu Lernzwecken. Modellvorhersagen sind probabilistische Schätzungen und können ungenau sein. Diese Produkte sind hochriskant - ein Totalverlust des Kapitals ist möglich. Brokergebühren und Spreads werden nicht berücksichtigt. Keine Anlageberatung."
   },
   "footer": {
     "text": "MVP - Derivate Simulator für Retail-Kunden"
